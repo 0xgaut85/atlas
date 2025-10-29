@@ -409,15 +409,19 @@ CRITICAL FEE ENFORCEMENT & PAYMENT ROUTING:
 
 Important: Be conversational, friendly, and natural. You're an AI assistant that people enjoy talking to. You know everything about Atlas402, its utilities, documentation, and the x402 protocol. Reference specific pages, features, and capabilities when relevant. When users ask for lists of services or tokens, use your tools to fetch real data. When users want to perform actions (mint tokens, make payments), create payment_intent objects that the UI will execute.
 
-CRITICAL RESPONSE STYLE:
-- NEVER show your internal reasoning or analysis of tool results to users
-- NEVER say things like "The list_tokens tool provides..." or "With over 40 tokens returned..."
-- NEVER explain what tools you used or how you processed the data
-- Give direct, natural answers as if you naturally know the information
-- When users ask "are there tokens to mint?", simply say "Yes! Here are the available tokens:" and list them
-- When you fetch data with tools, present it naturally without mentioning the tool or your reasoning process
-- Be concise and helpful - users don't need to see your thought process
-- Focus on giving useful information, not explaining your methodology`;
+CRITICAL RESPONSE STYLE - ABSOLUTELY MANDATORY:
+- NEVER show your internal reasoning, analysis, or thought process to users
+- NEVER mention tool names like "list_tokens", "get_token_list", "The tool", "The function", etc.
+- NEVER explain what you did or how you processed data - just give the answer directly
+- NEVER repeat information - if you already said something, don't say it again
+- NEVER start responses with analysis like "The list_tokens function provided..." or "With over 40 tokens returned..."
+- NEVER describe what tools returned or what data you found - just present the information naturally
+- ALWAYS give direct, natural answers as if you naturally know the information
+- When users ask about tokens, immediately present the tokens without any preamble about tools or data sources
+- When you use tools, act as if you already knew the information - don't mention the tool usage
+- Keep responses concise and natural - one clear answer, not multiple explanations
+- If you find yourself repeating the same information multiple times, stop and give only one clear response
+- Remember: Users want answers, not explanations of how you got the answers`;
 
     // Define tools for Claude
     const tools = [
@@ -613,37 +617,38 @@ CRITICAL RESPONSE STYLE:
       cleanedText = cleanedText.replace(/<\/?[a-z_]+>/gi, '');
       
       // Remove reasoning patterns - match paragraphs that analyze tool results
-      // Pattern 1: "The [tool] tool returned/provides/listed..."
-      cleanedText = cleanedText.replace(/The\s+\w+\s+tool\s+(returned|provides|listed|found|gave|shows|includes|demonstrates)[\s\S]*?(?=\n\n|$)/gi, '');
+      // Pattern 1: "The [tool/function] [verb]..." (most common)
+      cleanedText = cleanedText.replace(/The\s+(list_tokens|get_token_list|list tokens|tool|function)\s+(provided|returned|listed|found|gave|shows|includes|demonstrates|covers|contains)[\s\S]*?(?=\n\n|$)/gi, '');
       
       // Pattern 2: "With over X tokens returned..." / "With this comprehensive..."
-      cleanedText = cleanedText.replace(/With\s+(over\s+\d+\s+tokens|this\s+\w+\s+(list|data|results|tool|catalog))[\s\S]*?(?=\n\n|$)/gi, '');
+      cleanedText = cleanedText.replace(/With\s+(over\s+\d+\s+tokens|this\s+\w+\s+(list|data|results|tool|catalog|selection))[\s\S]*?(?=\n\n|$)/gi, '');
       
-      // Pattern 3: "Overall, the results..." / "Overall..."
+      // Pattern 3: "Overall, the results..." / "Overall..." / "The results provide..."
       cleanedText = cleanedText.replace(/Overall[\s\S]*?(?=\n\n|$)/gi, '');
+      cleanedText = cleanedText.replace(/The\s+results\s+(provide|show|include|demonstrate|cover|contain|list)[\s\S]*?(?=\n\n|$)/gi, '');
       
       // Pattern 4: "This would be helpful..." / "This demonstrates..." / "This gives..."
-      cleanedText = cleanedText.replace(/This\s+(would be|demonstrates|gives|includes|provides|shows|can|will)[\s\S]*?(?=\n\n|$)/gi, '');
+      cleanedText = cleanedText.replace(/This\s+(would be|demonstrates|gives|includes|provides|shows|can|will|are|is)[\s\S]*?(?=\n\n|$)/gi, '');
       
       // Pattern 5: "The API documentation provided..." / "The tool provided..."
-      cleanedText = cleanedText.replace(/The\s+(API\s+documentation|tool)\s+provided[\s\S]*?(?=\n\n|$)/gi, '');
+      cleanedText = cleanedText.replace(/The\s+(API\s+documentation|tool|function|list_tokens|get_token_list)\s+(provided|returned|listed|found|gave|shows)[\s\S]*?(?=\n\n|$)/gi, '');
       
-      // Pattern 6: "The list covers..." / "The results show..." / "The data includes..."
-      cleanedText = cleanedText.replace(/The\s+(list|results|data|catalog)\s+(covers|shows|includes|demonstrates|contains|lists)[\s\S]*?(?=\n\n|$)/gi, '');
+      // Pattern 6: "The list covers..." / "The data includes..."
+      cleanedText = cleanedText.replace(/The\s+(list|results|data|catalog|selection|tokens)\s+(covers|shows|includes|demonstrates|contains|lists|range|provide)[\s\S]*?(?=\n\n|$)/gi, '');
       
       // Pattern 7: "To find [something], I'll..." / "I'll look through..." / "I'll search..."
       cleanedText = cleanedText.replace(/To\s+\w+[\s\S]*?,\s*I'?ll[\s\S]*?(?=\n\n|$)/gi, '');
-      cleanedText = cleanedText.replace(/I'?ll\s+(look through|search|check|find|select|pick)[\s\S]*?(?=\n\n|$)/gi, '');
+      cleanedText = cleanedText.replace(/I'?ll\s+(look through|search|check|find|select|pick|analyze|process)[\s\S]*?(?=\n\n|$)/gi, '');
       
       // Pattern 8: "A few that stand out:" / "Some examples include:" (when followed by analysis)
-      cleanedText = cleanedText.replace(/(A few|Some|Several|Many)\s+(that|which)\s+(stand out|include|are|have)[\s\S]*?(?=\n\n(?=\d+\.|Sure|Here|Let|To|I found|You can|Happy|Let me|I can|Sure,))/gi, '');
+      cleanedText = cleanedText.replace(/(A few|Some|Several|Many)\s+(that|which)\s+(stand out|include|are|have)[\s\S]*?(?=\n\n(?=\d+\.|Sure|Here|Let|To|I found|You can|Happy|Let me|I can|Good news|There are))/gi, '');
       
       // Pattern 9: "The tool provided high quality results..." / "With this comprehensive token list..."
-      cleanedText = cleanedText.replace(/The\s+tool\s+provided[\s\S]*?(?=\n\n|$)/gi, '');
-      cleanedText = cleanedText.replace(/With\s+this\s+comprehensive[\s\S]*?(?=\n\n|$)/gi, '');
+      cleanedText = cleanedText.replace(/The\s+tool\s+(provided|returned|listed|found)[\s\S]*?(?=\n\n|$)/gi, '');
+      cleanedText = cleanedText.replace(/With\s+this\s+(comprehensive|extensive|detailed)[\s\S]*?(?=\n\n|$)/gi, '');
       
       // Pattern 10: "No need for additional searches..." / "This single tool call..."
-      cleanedText = cleanedText.replace(/(No need for|This single tool call|With this)[\s\S]*?(?=\n\n|$)/gi, '');
+      cleanedText = cleanedText.replace(/(No need for|This single tool call|With this|The tool gave)[\s\S]*?(?=\n\n|$)/gi, '');
       
       // Pattern 11: Remove paragraphs that start with summary phrases
       cleanedText = cleanedText.replace(/^(In summary|To summarize|In conclusion|To conclude|In essence)[\s\S]*?(?=\n\n|$)/gim, '');
@@ -652,7 +657,22 @@ CRITICAL RESPONSE STYLE:
       cleanedText = cleanedText.replace(/^\d+\s*\n\n/igm, '');
       
       // Pattern 13: Remove paragraphs that mention analyzing or processing results
-      cleanedText = cleanedText.replace(/[^\n]*(analyzing|processing|looking through|searching through|examining|reviewing)[\s\S]*?(?=\n\n(?=\d+\.|Sure|Here|Let|To|I found|You can|Happy|Let me|I can|Sure,))/gi, '');
+      cleanedText = cleanedText.replace(/[^\n]*(analyzing|processing|looking through|searching through|examining|reviewing|checking|finding|selecting)[\s\S]*?(?=\n\n(?=\d+\.|Sure|Here|Let|To|I found|You can|Happy|Let me|I can|Good news|There are))/gi, '');
+      
+      // Pattern 14: Remove duplicate content - if same info appears twice, keep only first occurrence
+      const paragraphs = cleanedText.split('\n\n');
+      const seenParagraphs = new Set<string>();
+      const uniqueParagraphs: string[] = [];
+      
+      for (const para of paragraphs) {
+        const normalized = para.trim().toLowerCase().replace(/\d+/g, '');
+        if (!seenParagraphs.has(normalized) || para.trim().match(/^\d+\./)) {
+          uniqueParagraphs.push(para);
+          seenParagraphs.add(normalized);
+        }
+      }
+      
+      cleanedText = uniqueParagraphs.join('\n\n');
       
       // Trim whitespace and clean up multiple newlines
       cleanedText = cleanedText.replace(/\n{3,}/g, '\n\n').trim();
