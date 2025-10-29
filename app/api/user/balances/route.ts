@@ -35,6 +35,63 @@ async function fetchBaseUSDCBalance(address: string): Promise<string> {
   }
 }
 
+// Helper to fetch ETH balance from Base
+async function fetchBaseETHBalance(address: string): Promise<string> {
+  try {
+    const rpcUrl = 'https://mainnet.base.org';
+    
+    const response = await fetch(rpcUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'eth_getBalance',
+        params: [address, 'latest'],
+        id: 1,
+      }),
+    });
+    
+    const result = await response.json();
+    if (result.result && result.result !== '0x') {
+      const balance = BigInt(result.result);
+      const balanceEth = Number(balance) / 1e18; // ETH has 18 decimals
+      return balanceEth.toFixed(6);
+    }
+    return '0.0';
+  } catch (error) {
+    console.error('Error fetching Base ETH balance:', error);
+    return '0.0';
+  }
+}
+
+// Helper to fetch SOL balance from Solana
+async function fetchSolanaSOLBalance(address: string): Promise<string> {
+  try {
+    const rpcUrl = 'https://api.mainnet-beta.solana.com';
+    
+    const response = await fetch(rpcUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'getBalance',
+        params: [address],
+      }),
+    });
+    
+    const result = await response.json();
+    if (result.result && result.result.value) {
+      const balance = result.result.value / 1e9; // SOL has 9 decimals
+      return balance.toFixed(6);
+    }
+    return '0.0';
+  } catch (error) {
+    console.error('Error fetching Solana SOL balance:', error);
+    return '0.0';
+  }
+}
+
 // Helper to fetch SOL balance from Solana
 async function fetchSolanaUSDCBalance(address: string): Promise<string> {
   try {
@@ -81,19 +138,25 @@ export async function GET(req: NextRequest) {
     let solBalance = null;
     
     if (address) {
-      const usdc = await fetchBaseUSDCBalance(address);
+      const [usdc, eth] = await Promise.all([
+        fetchBaseUSDCBalance(address),
+        fetchBaseETHBalance(address),
+      ]);
       evmBalance = {
         network: 'base',
-        native: '0.0', // ETH balance (can be added later)
+        native: eth,
         usdc,
       };
     }
     
     if (solAddress) {
-      const usdc = await fetchSolanaUSDCBalance(solAddress);
+      const [usdc, sol] = await Promise.all([
+        fetchSolanaUSDCBalance(solAddress),
+        fetchSolanaSOLBalance(solAddress),
+      ]);
       solBalance = {
         network: 'solana-mainnet',
-        native: '0.0', // SOL balance (can be added later)
+        native: sol,
         usdc,
       };
     }
