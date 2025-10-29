@@ -78,6 +78,32 @@ if (DB_ENABLED) {
   console.log('[atlas-tracking] Using Postgres URL:', postgresUrl ? postgresUrl.substring(0, 20) + '...' : 'none');
 }
 
+/**
+ * Helper function to normalize Vercel Postgres/Neon query results
+ * Vercel Postgres returns arrays directly, but we need to handle edge cases
+ */
+function normalizeQueryResult(result: any): any[] {
+  // If it's already an array, return it
+  if (Array.isArray(result)) {
+    return result;
+  }
+  // If it has a rows property (some Postgres clients return this), use it
+  if (result && Array.isArray(result.rows)) {
+    return result.rows;
+  }
+  // If it has a data property, use it
+  if (result && Array.isArray(result.data)) {
+    return result.data;
+  }
+  // Fallback: wrap in array if it's a single object
+  if (result && typeof result === 'object') {
+    return [result];
+  }
+  // Otherwise return empty array
+  console.warn('[atlas-tracking] Unexpected query result format:', typeof result, result);
+  return [];
+}
+
 const fallbackStore = {
   payments: new Map<string, AtlasPaymentRecord>(),
   events: [] as AtlasUserEvent[],
@@ -392,7 +418,11 @@ export async function recordUserEvent(input: UserEventInput): Promise<AtlasUserE
       RETURNING id, user_address, event_type, network, reference_id, amount_micro, metadata, created_at
     `;
 
-    const row = result.rows[0];
+    const rows = normalizeQueryResult(result);
+    const row = rows[0];
+    if (!row) {
+      throw new Error('Failed to insert user event - no row returned');
+    }
     return {
       id: row.id,
       userAddress: row.user_address,
@@ -466,7 +496,8 @@ export async function listUserEvents(options: ListUserEventsOptions = {}): Promi
         `;
       }
 
-      const rows = await query;
+      const queryResult = await query;
+      const rows = normalizeQueryResult(queryResult);
       
       return rows.map((row: any) => ({
         id: row.id,
@@ -530,12 +561,13 @@ export async function listServices(): Promise<ServiceRecord[]> {
   if (DB_ENABLED) {
     await ensureDb();
     try {
-      const rows = await sql`
+      const queryResult = await sql`
         SELECT id, name, description, endpoint, merchant_address, category, network, price_amount, price_currency, metadata, created_at
         FROM atlas_services
         ORDER BY created_at DESC
       `;
 
+      const rows = normalizeQueryResult(queryResult);
       console.log(`✅ Loaded ${rows.length} services from database`);
 
       return rows.map((row: any) => ({
@@ -570,33 +602,37 @@ export async function getPaymentTotals(days = 7) {
 
   if (DB_ENABLED) {
     await ensureDb();
-    const revenueRows = await sql`
+    const revenueResult = await sql`
       SELECT network, category, SUM(amount_micro) as total_micro
       FROM atlas_payments
       WHERE created_at >= ${since.toISOString()}
       GROUP BY network, category
     `;
 
-    const userRow = await sql`
+    const userResult = await sql`
       SELECT COUNT(DISTINCT user_address) AS users
       FROM atlas_payments
       WHERE user_address IS NOT NULL AND created_at >= ${since.toISOString()}
     `;
 
-    const servicesRow = await sql`
+    const servicesResult = await sql`
       SELECT COUNT(*) AS services
       FROM atlas_services
       WHERE created_at >= ${since.toISOString()}
     `;
 
+    const revenueRows = normalizeQueryResult(revenueResult);
+    const userRows = normalizeQueryResult(userResult);
+    const servicesRows = normalizeQueryResult(servicesResult);
+
     return {
-      byNetworkAndCategory: revenueRows.rows.map((row) => ({
+      byNetworkAndCategory: revenueRows.map((row: any) => ({
         network: row.network,
         category: row.category,
         totalMicro: Number(row.total_micro) || 0,
       })),
-      uniqueUsers: Number(userRow.rows[0]?.users ?? 0),
-      servicesAdded: Number(servicesRow.rows[0]?.services ?? 0),
+      uniqueUsers: Number(userRows[0]?.users ?? 0),
+      servicesAdded: Number(servicesRows[0]?.services ?? 0),
       since,
     };
   }
