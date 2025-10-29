@@ -7,7 +7,8 @@ export async function GET(request: NextRequest) {
 
   if (!verification.valid) {
     console.log('Payment verification failed:', verification.error);
-    return create402Response(request, '$1.00', 'Discover and test x402 services across categories');
+    // Return Base-only for x402scan compatibility
+    return create402Response(request, '$1.00', 'Discover and test x402 services across categories', ['base']);
   }
 
   // Payment verified - return Atlas Index token data

@@ -200,11 +200,13 @@ async function verifyOnChainFallback(
 /**
  * Creates a 402 Payment Required response
  * Compatible with x402scan.com strict schema validation
+ * @param networksOnly - Optional array to limit which networks to include (e.g., ['base'] for Base-only)
  */
 export function create402Response(
   request: Request,
   price: string = '$1.00',
-  description?: string
+  description?: string,
+  networksOnly?: ('base' | 'solana-mainnet')[]
 ) {
   // Convert configured price (e.g., "$1.00") to micro units (string)
   const priceNumber = Number(price.replace(/[^0-9.]/g, '')) || 1;
@@ -218,9 +220,13 @@ export function create402Response(
   const resourceDescription = description || `Payment required for ${url.pathname}`;
 
   const accepts: Array<Record<string, any>> = [];
+  
+  // Determine which networks to include
+  const includeBase = !networksOnly || networksOnly.includes('base');
+  const includeSolana = !networksOnly || networksOnly.includes('solana-mainnet');
 
   // Base (EVM) USDC option - x402scan requires "exact" scheme
-  if (X402_CONFIG.supportedNetworks.includes('base')) {
+  if (includeBase && X402_CONFIG.supportedNetworks.includes('base')) {
     accepts.push({
       scheme: 'exact', // x402scan requires "exact" instead of "x402+eip712"
       network: 'base',
@@ -240,7 +246,7 @@ export function create402Response(
   }
 
   // Solana USDC option - x402scan requires "exact" scheme
-  if (X402_CONFIG.supportedNetworks.includes('solana-mainnet')) {
+  if (includeSolana && X402_CONFIG.supportedNetworks.includes('solana-mainnet')) {
     accepts.push({
       scheme: 'exact', // x402scan requires "exact" instead of "x402+solana"
       network: 'solana-mainnet',
