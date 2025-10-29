@@ -199,42 +199,70 @@ async function verifyOnChainFallback(
 
 /**
  * Creates a 402 Payment Required response
+ * Compatible with x402scan.com strict schema validation
  */
-export function create402Response(message?: string) {
+export function create402Response(
+  request: Request,
+  price: string = '$1.00',
+  description?: string
+) {
   // Convert configured price (e.g., "$1.00") to micro units (string)
-  const priceNumber = Number((X402_CONFIG.price || '$1.00').replace(/[^0-9.]/g, '')) || 1;
+  const priceNumber = Number(price.replace(/[^0-9.]/g, '')) || 1;
   const maxAmountRequired = Math.round(priceNumber * 1_000_000).toString();
 
-  const accepts: Array<Record<string, string>> = [];
+  // Get full resource URL from request
+  const url = new URL(request.url);
+  const resourceUrl = url.toString();
 
-  // Base (EVM) USDC option
+  // Build description if not provided
+  const resourceDescription = description || `Payment required for ${url.pathname}`;
+
+  const accepts: Array<Record<string, any>> = [];
+
+  // Base (EVM) USDC option - x402scan requires "exact" scheme
   if (X402_CONFIG.supportedNetworks.includes('base')) {
     accepts.push({
-      asset: TOKENS.usdcEvm,
-      payTo: X402_CONFIG.payTo,
+      scheme: 'exact', // x402scan requires "exact" instead of "x402+eip712"
       network: 'base',
       maxAmountRequired,
-      scheme: 'x402+eip712',
+      resource: resourceUrl,
+      description: resourceDescription,
       mimeType: 'application/json',
+      payTo: X402_CONFIG.payTo,
+      maxTimeoutSeconds: 60,
+      asset: TOKENS.usdcEvm,
+      extra: {
+        scheme: 'x402+eip712', // Keep original scheme in extra for compatibility
+        name: 'USDC',
+        version: '2',
+      },
     });
   }
 
-  // Solana USDC option
+  // Solana USDC option - x402scan requires "exact" scheme
   if (X402_CONFIG.supportedNetworks.includes('solana-mainnet')) {
     accepts.push({
-      asset: TOKENS.usdcSol,
-      payTo: X402_CONFIG.payToSol,
+      scheme: 'exact', // x402scan requires "exact" instead of "x402+solana"
       network: 'solana-mainnet',
       maxAmountRequired,
-      scheme: 'x402+solana',
+      resource: resourceUrl,
+      description: resourceDescription,
       mimeType: 'application/json',
+      payTo: X402_CONFIG.payToSol,
+      maxTimeoutSeconds: 60,
+      asset: TOKENS.usdcSol,
+      extra: {
+        scheme: 'x402+solana', // Keep original scheme in extra for compatibility
+        name: 'USDC',
+      },
     });
   }
 
+  // x402scan strict schema format
   return new Response(
     JSON.stringify({
-      error: message || 'Payment required',
-      paymentRequired: true,
+      x402Version: 1,
+      error: null, // x402scan prefers null over error message
       accepts,
     }),
     {

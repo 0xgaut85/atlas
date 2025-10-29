@@ -76,30 +76,48 @@ export async function GET(
       // Return 402 Payment Required with deployer address as recipient
       const accepts = [];
       
+      const url = new URL(req.url);
+      const resourceUrl = url.toString();
+      
       if (network === 'base') {
         accepts.push({
-          asset: TOKENS.usdcEvm,
-          payTo: merchantAddress, // Deployer address, not protocol
+          scheme: 'exact', // x402scan requires "exact"
           network: 'base',
           maxAmountRequired: priceMicro.toString(),
-          scheme: 'x402+eip712',
+          resource: resourceUrl,
+          description: `Payment required to mint ${service.name || 'token'}`,
           mimeType: 'application/json',
+          payTo: merchantAddress, // Deployer address, not protocol
+          maxTimeoutSeconds: 60,
+          asset: TOKENS.usdcEvm,
+          extra: {
+            scheme: 'x402+eip712', // Keep original scheme in extra
+            name: 'USDC',
+            version: '2',
+          },
         });
       } else if (network === 'solana-mainnet') {
         accepts.push({
-          asset: TOKENS.usdcSol,
-          payTo: merchantAddress, // Deployer address, not protocol
+          scheme: 'exact', // x402scan requires "exact"
           network: 'solana-mainnet',
           maxAmountRequired: priceMicro.toString(),
-          scheme: 'x402+solana',
+          resource: resourceUrl,
+          description: `Payment required to mint ${service.name || 'token'}`,
           mimeType: 'application/json',
+          payTo: merchantAddress, // Deployer address, not protocol
+          maxTimeoutSeconds: 60,
+          asset: TOKENS.usdcSol,
+          extra: {
+            scheme: 'x402+solana', // Keep original scheme in extra
+            name: 'USDC',
+          },
         });
       }
 
       return new Response(
         JSON.stringify({
-          error: 'Payment required',
-          paymentRequired: true,
+          x402Version: 1,
+          error: null, // x402scan prefers null
           accepts,
         }),
         {

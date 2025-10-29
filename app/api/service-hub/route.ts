@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
 
   if (!verification.valid) {
     console.log('Payment verification failed:', verification.error);
-    return create402Response(verification.error);
+    return create402Response(request, '$1.00', verification.error);
   }
 
   // Payment verified - return service hub data
