@@ -7,15 +7,32 @@ export async function GET(req: NextRequest) {
     const days = parseInt(searchParams.get('days') || '7');
     const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
-    // Fetch all payments and events
-    const payments = await listPayments({
-      since,
-      limit: 10000,
-    });
+    console.log('🔍 Fetching users:', { days, since: since.toISOString() });
 
-    const events = await listUserEvents({
-      limit: 10000,
-    });
+    // Fetch all payments and events
+    let payments;
+    let events;
+    
+    try {
+      payments = await listPayments({
+        since,
+        limit: 10000,
+      });
+      console.log(`✅ Loaded ${payments.length} payments`);
+    } catch (dbError: any) {
+      console.error('❌ Database error loading payments:', dbError.message);
+      payments = [];
+    }
+
+    try {
+      events = await listUserEvents({
+        limit: 10000,
+      });
+      console.log(`✅ Loaded ${events.length} events`);
+    } catch (dbError: any) {
+      console.error('❌ Database error loading events:', dbError.message);
+      events = [];
+    }
 
     // Group by user address
     const userMap = new Map<string, {
@@ -63,16 +80,17 @@ export async function GET(req: NextRequest) {
       networks: Array.from(u.networks),
     })).sort((a, b) => b.lastSeen - a.lastSeen);
 
+    console.log(`✅ Returning ${users.length} users`);
+
     return NextResponse.json({
       success: true,
       data: users,
     });
   } catch (error: any) {
-    console.error('Error fetching users:', error);
+    console.error('❌ Error fetching users:', error);
     return NextResponse.json({
       success: false,
       error: error.message || 'Failed to fetch users',
     }, { status: 500 });
   }
 }
-

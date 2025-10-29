@@ -1,5 +1,66 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { listPayments } from '@/lib/atlas-tracking';
+import { X402_CONFIG, TOKENS } from '@/lib/x402-config';
+
+// Helper to fetch USDC balance from Base
+async function fetchBaseUSDCBalance(address: string): Promise<string> {
+  try {
+    const rpcUrl = 'https://mainnet.base.org';
+    const balanceOfSignature = '0x70a08231';
+    const addressParam = address.substring(2).padStart(64, '0').toLowerCase();
+    const data = balanceOfSignature + addressParam;
+    
+    const response = await fetch(rpcUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'eth_call',
+        params: [{ to: TOKENS.usdcEvm, data }, 'latest'],
+        id: 1,
+      }),
+    });
+    
+    const result = await response.json();
+    if (result.result && result.result !== '0x') {
+      const balance = BigInt(result.result);
+      return (Number(balance) / 1_000_000).toFixed(6);
+    }
+    return '0.0';
+  } catch (error) {
+    console.error('Error fetching Base USDC balance:', error);
+    return '0.0';
+  }
+}
+
+// Helper to fetch USDC balance from Solana
+async function fetchSolanaUSDCBalance(address: string): Promise<string> {
+  try {
+    const USDC_MINT = TOKENS.usdcSol;
+    const rpcUrl = 'https://api.mainnet-beta.solana.com';
+    
+    const response = await fetch(rpcUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'getTokenAccountsByOwner',
+        params: [address, { mint: USDC_MINT }, { encoding: 'jsonParsed' }],
+      }),
+    });
+    
+    const result = await response.json();
+    if (result.result?.value?.length > 0) {
+      const balance = result.result.value[0].account.data.parsed.info.tokenAmount.uiAmount;
+      return balance.toFixed(6);
+    }
+    return '0.0';
+  } catch (error) {
+    console.error('Error fetching Solana USDC balance:', error);
+    return '0.0';
+  }
+}
 
 export async function GET(req: NextRequest) {
   try {
@@ -7,11 +68,20 @@ export async function GET(req: NextRequest) {
     const days = parseInt(searchParams.get('days') || '7');
     const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
+    console.log('🔍 Fetching revenue data:', { days, since: since.toISOString() });
+
     // Fetch all payments from tracking system
-    const payments = await listPayments({
-      since,
-      limit: 10000,
-    });
+    let payments;
+    try {
+      payments = await listPayments({
+        since,
+        limit: 10000,
+      });
+      console.log(`✅ Loaded ${payments.length} payments from database`);
+    } catch (dbError: any) {
+      console.error('❌ Database error, using empty array:', dbError.message);
+      payments = [];
+    }
 
     // Calculate totals by network
     const totals = {
@@ -47,18 +117,26 @@ export async function GET(req: NextRequest) {
       else categories.other += amount;
     });
 
-    // Get stats (placeholder for now)
+    // Get stats
     const stats = {
       uniqueUsers: new Set(payments.map(p => p.userAddress).filter(Boolean)).size,
-      servicesAdded: 0, // Would need to query services table
+      servicesAdded: 0, // Will be calculated from services table if needed
       since: since.toISOString(),
       sampleSize: payments.length,
     };
 
-    // Placeholder balances (would fetch from on-chain in production)
+    // Fetch real USDC balances from blockchain for protocol addresses
+    console.log('🔍 Fetching protocol balances...');
+    const [baseUSDC, solUSDC] = await Promise.all([
+      fetchBaseUSDCBalance(X402_CONFIG.payTo),
+      fetchSolanaUSDCBalance(X402_CONFIG.payToSol),
+    ]);
+    
+    console.log('✅ Protocol balances:', { baseUSDC, solUSDC });
+
     const balances = {
-      baseUSDC: '0.0',
-      solUSDC: '0.0',
+      baseUSDC,
+      solUSDC,
     };
 
     return NextResponse.json({
@@ -71,11 +149,10 @@ export async function GET(req: NextRequest) {
       },
     });
   } catch (error: any) {
-    console.error('Error fetching revenue:', error);
+    console.error('❌ Error fetching revenue:', error);
     return NextResponse.json({
       success: false,
       error: error.message || 'Failed to fetch revenue',
     }, { status: 500 });
   }
 }
-

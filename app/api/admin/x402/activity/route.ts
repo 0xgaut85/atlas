@@ -7,11 +7,20 @@ export async function GET(req: NextRequest) {
     const days = parseInt(searchParams.get('days') || '7');
     const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
+    console.log('🔍 Fetching activity series:', { days, since: since.toISOString() });
+
     // Fetch all payments
-    const payments = await listPayments({
-      since,
-      limit: 10000,
-    });
+    let payments: Awaited<ReturnType<typeof listPayments>>;
+    try {
+      payments = await listPayments({
+        since,
+        limit: 10000,
+      });
+      console.log(`✅ Loaded ${payments.length} payments`);
+    } catch (dbError: any) {
+      console.error('❌ Database error:', dbError.message);
+      payments = [] as Awaited<ReturnType<typeof listPayments>>;
+    }
 
     // Group by day
     const dayMap = new Map<string, {
@@ -62,16 +71,17 @@ export async function GET(req: NextRequest) {
       }))
       .sort((a, b) => a.day.localeCompare(b.day));
 
+    console.log(`✅ Returning ${series.length} days of activity`);
+
     return NextResponse.json({
       success: true,
       data: series,
     });
   } catch (error: any) {
-    console.error('Error fetching activity:', error);
+    console.error('❌ Error fetching activity:', error);
     return NextResponse.json({
       success: false,
       error: error.message || 'Failed to fetch activity',
     }, { status: 500 });
   }
 }
-

@@ -7,11 +7,20 @@ export async function GET(req: NextRequest) {
     const days = parseInt(searchParams.get('days') || '7');
     const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
+    console.log('🔍 Fetching transactions:', { days, since: since.toISOString() });
+
     // Fetch all payments from tracking system
-    const payments = await listPayments({
-      since,
-      limit: 10000,
-    });
+    let payments;
+    try {
+      payments = await listPayments({
+        since,
+        limit: 10000,
+      });
+      console.log(`✅ Loaded ${payments.length} payments`);
+    } catch (dbError: any) {
+      console.error('❌ Database error:', dbError.message);
+      payments = [];
+    }
 
     // Format as transaction rows
     const txs = payments.map(p => {
@@ -33,16 +42,17 @@ export async function GET(req: NextRequest) {
       };
     }).sort((a, b) => b.time - a.time);
 
+    console.log(`✅ Returning ${txs.length} transactions`);
+
     return NextResponse.json({
       success: true,
       data: txs,
     });
   } catch (error: any) {
-    console.error('Error fetching transactions:', error);
+    console.error('❌ Error fetching transactions:', error);
     return NextResponse.json({
       success: false,
       error: error.message || 'Failed to fetch transactions',
     }, { status: 500 });
   }
 }
-

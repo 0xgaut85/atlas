@@ -14,21 +14,37 @@ export async function GET(req: NextRequest) {
       }, { status: 400 });
     }
 
+    console.log('🔍 Fetching user activity:', { address, solAddress });
+
     // Normalize addresses
     const userAddress = address?.toLowerCase();
     const userSolAddress = solAddress?.toLowerCase();
 
     // Fetch payments from tracking system
-    const payments = await listPayments({
-      userAddress: userAddress || undefined,
-      limit: 1000,
-    });
+    let payments;
+    let events;
+    
+    try {
+      payments = await listPayments({
+        userAddress: userAddress || undefined,
+        limit: 1000,
+      });
+      console.log(`✅ Loaded ${payments.length} payments`);
+    } catch (dbError: any) {
+      console.error('❌ Database error loading payments:', dbError.message);
+      payments = [];
+    }
 
-    // Fetch user events
-    const events = await listUserEvents({
-      userAddress: userAddress || userSolAddress || undefined,
-      limit: 1000,
-    });
+    try {
+      events = await listUserEvents({
+        userAddress: userAddress || userSolAddress || undefined,
+        limit: 1000,
+      });
+      console.log(`✅ Loaded ${events.length} events`);
+    } catch (dbError: any) {
+      console.error('❌ Database error loading events:', dbError.message);
+      events = [];
+    }
 
     // Combine and format activity
     const activity = [
@@ -56,16 +72,17 @@ export async function GET(req: NextRequest) {
       })),
     ].sort((a, b) => b.timestamp - a.timestamp);
 
+    console.log(`✅ Returning ${activity.length} activity items`);
+
     return NextResponse.json({ 
       success: true, 
       data: activity 
     });
   } catch (error: any) {
-    console.error('Error fetching user activity:', error);
+    console.error('❌ Error fetching user activity:', error);
     return NextResponse.json({ 
       success: false, 
       error: error.message || 'Failed to fetch activity' 
     }, { status: 500 });
   }
 }
-

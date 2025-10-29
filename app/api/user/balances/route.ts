@@ -1,30 +1,109 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// Simple balance fetcher - in production, you'd query on-chain data
+// Helper to fetch USDC balance from Base using RPC
+async function fetchBaseUSDCBalance(address: string): Promise<string> {
+  try {
+    const USDC_CONTRACT = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913'; // Base USDC
+    const rpcUrl = 'https://mainnet.base.org';
+    
+    // ERC-20 balanceOf(address) function signature
+    const balanceOfSignature = '0x70a08231'; // balanceOf(address)
+    const addressParam = address.substring(2).padStart(64, '0').toLowerCase();
+    const data = balanceOfSignature + addressParam;
+    
+    const response = await fetch(rpcUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'eth_call',
+        params: [{ to: USDC_CONTRACT, data }, 'latest'],
+        id: 1,
+      }),
+    });
+    
+    const result = await response.json();
+    if (result.result && result.result !== '0x') {
+      const balance = BigInt(result.result);
+      const balanceUsdc = Number(balance) / 1_000_000; // USDC has 6 decimals
+      return balanceUsdc.toFixed(6);
+    }
+    return '0.0';
+  } catch (error) {
+    console.error('Error fetching Base USDC balance:', error);
+    return '0.0';
+  }
+}
+
+// Helper to fetch SOL balance from Solana
+async function fetchSolanaUSDCBalance(address: string): Promise<string> {
+  try {
+    const USDC_MINT = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'; // Solana USDC
+    const rpcUrl = 'https://api.mainnet-beta.solana.com';
+    
+    const response = await fetch(rpcUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'getTokenAccountsByOwner',
+        params: [
+          address,
+          { mint: USDC_MINT },
+          { encoding: 'jsonParsed' }
+        ],
+      }),
+    });
+    
+    const result = await response.json();
+    if (result.result && result.result.value && result.result.value.length > 0) {
+      const tokenAccount = result.result.value[0];
+      const balance = tokenAccount.account.data.parsed.info.tokenAmount.uiAmount;
+      return balance.toFixed(6);
+    }
+    return '0.0';
+  } catch (error) {
+    console.error('Error fetching Solana USDC balance:', error);
+    return '0.0';
+  }
+}
+
 export async function GET(req: NextRequest) {
   try {
     const searchParams = req.nextUrl.searchParams;
     const address = searchParams.get('address');
     const solAddress = searchParams.get('solAddress');
     
-    // For now, return empty balances
-    // In production, fetch from blockchain or caching service
-    const balances = {
-      evm: address ? {
+    console.log('🔍 Fetching balances for:', { address, solAddress });
+    
+    let evmBalance = null;
+    let solBalance = null;
+    
+    if (address) {
+      const usdc = await fetchBaseUSDCBalance(address);
+      evmBalance = {
         network: 'base',
-        native: '0.0', // ETH
-        usdc: '0.0', // USDC
-      } : null,
-      solana: solAddress ? {
+        native: '0.0', // ETH balance (can be added later)
+        usdc,
+      };
+    }
+    
+    if (solAddress) {
+      const usdc = await fetchSolanaUSDCBalance(solAddress);
+      solBalance = {
         network: 'solana-mainnet',
-        native: '0.0', // SOL
-        usdc: '0.0', // USDC
-      } : null,
-    };
-
+        native: '0.0', // SOL balance (can be added later)
+        usdc,
+      };
+    }
+    
     return NextResponse.json({ 
       success: true, 
-      data: balances 
+      data: {
+        evm: evmBalance,
+        solana: solBalance,
+      }
     });
   } catch (error: any) {
     console.error('Error fetching balances:', error);
@@ -34,4 +113,3 @@ export async function GET(req: NextRequest) {
     }, { status: 500 });
   }
 }
-
