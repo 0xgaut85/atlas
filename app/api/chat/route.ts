@@ -89,15 +89,13 @@ async function getX402Services() {
 
 async function getTokenList() {
   try {
-    // Directly import and use the discover API logic to avoid HTTP calls
-    const { GET } = await import('../../api/x402/discover/route');
-    const request = new Request('http://localhost:3000/api/x402/discover');
-    const response = await GET(request);
-    const data = await response.json();
+    // Use PayAI client directly to avoid HTTP calls
+    const { payaiClient } = await import('@/lib/payai-client');
+    const result = await payaiClient.discoverServices();
     
-    if (data.success && data.services) {
+    if (result.success && result.data) {
       // Filter for tokens only
-      const tokens = data.services.filter((service: any) => service.category === 'Tokens');
+      const tokens = result.data.filter((service: any) => service.category === 'Tokens');
       console.log('Tokens found:', tokens.length);
       console.log('Token names:', tokens.map((t: any) => t.name));
       return tokens;
