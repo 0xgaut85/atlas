@@ -78,7 +78,7 @@ export default function WorkspacePage() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-white text-gray-900">
       {/* Manage Wallet - Top Right */}
       <div className="fixed top-6 right-6 sm:top-8 sm:right-8 z-50">
         <ManageWallet />
@@ -91,43 +91,43 @@ export default function WorkspacePage() {
           <div className="flex items-center gap-3 mb-6">
             <div className="w-1 h-16 bg-red-600"></div>
             <div>
-              <h1 className="text-5xl sm:text-6xl md:text-7xl font-bold text-white font-title">
+              <h1 className="text-5xl sm:text-6xl md:text-7xl font-bold text-gray-900 font-title">
                 Atlas <span className="text-red-600">Workspace</span>
               </h1>
-              <p className="text-gray-400 mt-2 text-lg">Infrastructure for the x402 protocol</p>
+              <p className="text-gray-600 mt-2 text-lg">Infrastructure for the x402 protocol</p>
             </div>
           </div>
         </div>
         
         {/* Wallet Connection Banner */}
         {!isConnected ? (
-          <div className="mb-12 p-8 border-2 border-red-600 bg-red-600/10 backdrop-blur">
+          <div className="mb-12 p-8 border-2 border-red-600 bg-red-50 rounded-lg shadow-sm">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
               <div>
-                <h3 className="text-xl font-bold text-white mb-1 font-title">Connect Wallet</h3>
-                <p className="text-sm text-gray-300">Unlock x402-gated features and services</p>
+                <h3 className="text-xl font-bold text-gray-900 mb-1 font-title">Connect Wallet</h3>
+                <p className="text-sm text-gray-600">Unlock x402-gated features and services</p>
               </div>
               <button
                 onClick={connectWallet}
-                className="px-8 py-4 bg-red-600 hover:bg-red-700 text-white transition-all duration-300 font-medium border-2 border-red-600 hover:border-white"
+                className="px-8 py-4 bg-red-600 hover:bg-red-700 text-white transition-all duration-300 font-medium rounded-lg shadow-md hover:shadow-lg"
               >
                 Connect Now →
               </button>
             </div>
           </div>
         ) : (
-          <div className="mb-12 p-8 border-2 border-white/20 bg-white/5 backdrop-blur">
+          <div className="mb-12 p-8 border-2 border-gray-200 bg-gray-50 rounded-lg shadow-sm">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
               <div>
                 <div className="flex items-center gap-2 mb-2">
-                  <div className="w-2 h-2 bg-red-600 rounded-full animate-pulse"></div>
-                  <h3 className="text-xl font-bold text-white font-title">Connected</h3>
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                  <h3 className="text-xl font-bold text-gray-900 font-title">Connected</h3>
                 </div>
-                <p className="text-sm text-gray-400 font-mono">{formatAddress(address!)}</p>
+                <p className="text-sm text-gray-600 font-mono">{formatAddress(address!)}</p>
               </div>
               <button
                 onClick={() => disconnect()}
-                className="px-6 py-3 bg-white/10 hover:bg-white/20 text-white transition-all duration-300 font-medium border-2 border-white/20"
+                className="px-6 py-3 bg-white hover:bg-gray-100 text-gray-900 transition-all duration-300 font-medium border-2 border-gray-300 rounded-lg shadow-sm"
               >
                 Disconnect
               </button>
@@ -143,8 +143,8 @@ export default function WorkspacePage() {
           return (
             <div key={category} className="mb-16">
               <div className="flex items-center gap-3 mb-6">
-                <h2 className="text-2xl font-bold text-white font-title">{category}</h2>
-                <div className="flex-1 h-px bg-gradient-to-r from-red-600 to-transparent"></div>
+                <h2 className="text-2xl font-bold text-gray-900 font-title">{category}</h2>
+                <div className="flex-1 h-px bg-gradient-to-r from-red-600 to-gray-200"></div>
               </div>
               
               <div className="grid md:grid-cols-2 gap-6">
@@ -152,28 +152,26 @@ export default function WorkspacePage() {
                   <button
                     key={index}
                     onClick={() => router.push(utility.href)}
-                    className="group relative overflow-hidden text-left transition-all duration-300 hover:scale-[1.02]"
+                    className="group relative overflow-hidden text-left transition-all duration-300 hover:scale-[1.01]"
                   >
-                    {/* Subtle gradient border effect */}
-                    <div className="absolute inset-0 bg-gradient-to-r from-red-600/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                    <div className="relative border-2 border-white/10 hover:border-red-600 transition-all duration-300 p-8 bg-white/5 backdrop-blur m-[2px]">
+                    <div className="relative border-2 border-gray-200 hover:border-red-600 transition-all duration-300 p-8 bg-white rounded-lg shadow-sm hover:shadow-lg m-[2px]">
                       {/* Status */}
                       <div className="flex items-end justify-end mb-4">
                         <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 bg-red-600 rounded-full"></div>
-                          <span className="text-red-600 text-xs font-medium uppercase tracking-wider">
+                          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                          <span className="text-green-600 text-xs font-medium uppercase tracking-wider">
                             {utility.status}
                           </span>
                         </div>
                       </div>
                       
                       {/* Title */}
-                      <h3 className="text-2xl font-bold text-white mb-3 group-hover:text-red-600 transition-colors font-title">
+                      <h3 className="text-2xl font-bold text-gray-900 mb-3 group-hover:text-red-600 transition-colors font-title">
                         {utility.name}
                       </h3>
                       
                       {/* Description */}
-                      <p className="text-gray-400 text-sm leading-relaxed mb-6">
+                      <p className="text-gray-600 text-sm leading-relaxed mb-6">
                         {utility.description}
                       </p>
                       
@@ -193,52 +191,52 @@ export default function WorkspacePage() {
         })}
 
         {/* Resources Section */}
-        <div className="mt-20 pt-12 border-t-2 border-white/10">
-          <h2 className="text-2xl font-bold text-white mb-8 font-title">Developer Resources</h2>
+        <div className="mt-20 pt-12 border-t-2 border-gray-200">
+          <h2 className="text-2xl font-bold text-gray-900 mb-8 font-title">Developer Resources</h2>
           <div className="grid sm:grid-cols-3 gap-6">
             <Link
               href="/docs"
-              className="p-6 bg-white/5 border-2 border-white/10 hover:border-red-600 transition-all duration-300 group backdrop-blur"
+              className="p-6 bg-white border-2 border-gray-200 hover:border-red-600 transition-all duration-300 group rounded-lg shadow-sm hover:shadow-md"
             >
-              <h3 className="text-lg font-bold text-white mb-2 group-hover:text-red-600 transition-colors font-title">Documentation</h3>
-              <p className="text-sm text-gray-400">Learn how to integrate x402</p>
+              <h3 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-red-600 transition-colors font-title">Documentation</h3>
+              <p className="text-sm text-gray-600">Learn how to integrate x402</p>
             </Link>
             <Link
               href="/docs/api-reference"
-              className="p-6 bg-white/5 border-2 border-white/10 hover:border-red-600 transition-all duration-300 group backdrop-blur"
+              className="p-6 bg-white border-2 border-gray-200 hover:border-red-600 transition-all duration-300 group rounded-lg shadow-sm hover:shadow-md"
             >
-              <h3 className="text-lg font-bold text-white mb-2 group-hover:text-red-600 transition-colors font-title">API Reference</h3>
-              <p className="text-sm text-gray-400">Complete API documentation</p>
+              <h3 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-red-600 transition-colors font-title">API Reference</h3>
+              <p className="text-sm text-gray-600">Complete API documentation</p>
             </Link>
             <a
               href="https://github.com/atlas402"
               target="_blank"
               rel="noopener noreferrer"
-              className="p-6 bg-white/5 border-2 border-white/10 hover:border-red-600 transition-all duration-300 group backdrop-blur"
+              className="p-6 bg-white border-2 border-gray-200 hover:border-red-600 transition-all duration-300 group rounded-lg shadow-sm hover:shadow-md"
             >
-              <h3 className="text-lg font-bold text-white mb-2 group-hover:text-red-600 transition-colors font-title">GitHub</h3>
-              <p className="text-sm text-gray-400">Explore open-source code</p>
+              <h3 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-red-600 transition-colors font-title">GitHub</h3>
+              <p className="text-sm text-gray-600">Explore open-source code</p>
             </a>
           </div>
         </div>
 
         {/* Stats Footer */}
         <div className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-6">
-          <div className="p-6 border-2 border-white/10 bg-white/5 backdrop-blur">
+          <div className="p-6 border-2 border-gray-200 bg-white rounded-lg shadow-sm">
             <div className="text-3xl font-bold text-red-600 mb-1 font-title">6</div>
-            <div className="text-sm text-gray-400 uppercase tracking-wider">Utilities</div>
+            <div className="text-sm text-gray-600 uppercase tracking-wider">Utilities</div>
           </div>
-          <div className="p-6 border-2 border-white/10 bg-white/5 backdrop-blur">
+          <div className="p-6 border-2 border-gray-200 bg-white rounded-lg shadow-sm">
             <div className="text-3xl font-bold text-red-600 mb-1 font-title">2</div>
-            <div className="text-sm text-gray-400 uppercase tracking-wider">Networks</div>
+            <div className="text-sm text-gray-600 uppercase tracking-wider">Networks</div>
           </div>
-          <div className="p-6 border-2 border-white/10 bg-white/5 backdrop-blur">
+          <div className="p-6 border-2 border-gray-200 bg-white rounded-lg shadow-sm">
             <div className="text-3xl font-bold text-red-600 mb-1 font-title">∞</div>
-            <div className="text-sm text-gray-400 uppercase tracking-wider">Services</div>
+            <div className="text-sm text-gray-600 uppercase tracking-wider">Services</div>
           </div>
-          <div className="p-6 border-2 border-white/10 bg-white/5 backdrop-blur">
+          <div className="p-6 border-2 border-gray-200 bg-white rounded-lg shadow-sm">
             <div className="text-3xl font-bold text-red-600 mb-1 font-title">24/7</div>
-            <div className="text-sm text-gray-400 uppercase tracking-wider">Uptime</div>
+            <div className="text-sm text-gray-600 uppercase tracking-wider">Uptime</div>
           </div>
         </div>
       </main>
