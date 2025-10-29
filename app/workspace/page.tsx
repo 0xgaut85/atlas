@@ -1,11 +1,15 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { motion, useScroll, useTransform } from 'framer-motion';
 import { useAppKit, useAppKitAccount } from '@reown/appkit/react';
 import { useDisconnect as useAppKitDisconnect } from '@reown/appkit/react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ManageWallet } from '../components/ManageWallet';
+import GlitchText from '../components/motion/GlitchText';
+import MagneticButton from '../components/motion/MagneticButton';
+import HoverRevealCard from '../components/motion/HoverRevealCard';
 
 export default function WorkspacePage() {
   const router = useRouter();
@@ -13,6 +17,9 @@ export default function WorkspacePage() {
   const { disconnect } = useAppKitDisconnect();
   const { open } = useAppKit();
   const [mounted, setMounted] = useState(false);
+  const { scrollY } = useScroll();
+  
+  const heroY = useTransform(scrollY, [0, 500], [0, 100]);
 
   useEffect(() => {
     setMounted(true);
@@ -32,42 +39,48 @@ export default function WorkspacePage() {
       description: 'Your balances, payments, mints, services — across Base and Solana. Export and analyze your activity.',
       href: '/workspace/atlas-dashboard',
       status: 'Live',
-      category: 'Analytics'
+      category: 'Analytics',
+      number: '[1]'
     },
     {
       name: 'Atlas x402',
       description: 'Protocol revenue and usage dashboard. Monitor all user transactions, fees by category, and real-time network metrics.',
       href: '/workspace/atlas-x402',
       status: 'Live',
-      category: 'Analytics'
+      category: 'Analytics',
+      number: '[2]'
     },
     {
       name: 'Atlas Foundry',
       description: 'Forge and deploy x402-native assets. Create tokens that represent services, access rights, and network value.',
       href: '/workspace/atlas-foundry',
       status: 'Live',
-      category: 'Creation'
+      category: 'Creation',
+      number: '[3]'
     },
     {
       name: 'Atlas Index',
       description: 'Real-time signal layer across all x402 services. Track activity, monitor performance, and discover patterns.',
       href: '/workspace/atlas-index',
       status: 'Live',
-      category: 'Discovery'
+      category: 'Discovery',
+      number: '[4]'
     },
     {
       name: 'Atlas Mesh',
       description: 'Register and configure your services for the x402 economy. Connect once, monetize everywhere.',
       href: '/workspace/atlas-mesh',
       status: 'Live',
-      category: 'Integration'
+      category: 'Integration',
+      number: '[5]'
     },
     {
       name: 'Atlas Operator',
       description: 'Autonomous AI operator with full access to x402 services. Execute workflows on your behalf with approval guardrails.',
       href: '/workspace/atlas-operator',
       status: 'Live',
-      category: 'AI'
+      category: 'AI',
+      number: '[6]'
     }
   ];
 
@@ -78,167 +91,263 @@ export default function WorkspacePage() {
   }
 
   return (
-    <div className="min-h-screen bg-white text-gray-900">
+    <div className="min-h-screen bg-white text-black relative overflow-hidden">
+      {/* Premium grain texture overlay */}
+      <div 
+        className="fixed inset-0 pointer-events-none opacity-[0.03] z-50"
+        style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.0' numOctaves='5' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
+          backgroundRepeat: 'repeat',
+          backgroundSize: '150px 150px'
+        }}
+      />
+
       {/* Manage Wallet - Top Right */}
       <div className="fixed top-6 right-6 sm:top-8 sm:right-8 z-50">
         <ManageWallet />
       </div>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-6 sm:px-8 pt-32 pb-20">
-        {/* Hero Section */}
-        <div className="mb-16">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-1 h-16 bg-red-600"></div>
-            <div>
-              <h1 className="text-5xl sm:text-6xl md:text-7xl font-bold text-gray-900 font-title">
-                Atlas <span className="text-red-600">Workspace</span>
-              </h1>
-              <p className="text-gray-600 mt-2 text-lg">Infrastructure for the x402 protocol</p>
-            </div>
-          </div>
-        </div>
-        
-        {/* Wallet Connection Banner */}
-        {!isConnected ? (
-          <div className="mb-12 p-8 border-2 border-red-600 bg-red-50 rounded-lg shadow-sm">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+      <main className="relative z-10 max-w-7xl mx-auto px-6 sm:px-8 pt-32 pb-20">
+        {/* Hero Section with scroll parallax */}
+        <motion.div 
+          style={{ y: heroY }}
+          className="mb-20 md:mb-28"
+        >
+          <motion.div
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.1 }}
+            className="mb-8"
+          >
+            <div className="flex items-center gap-4 mb-6">
+              <div className="w-1 h-20 md:h-24 bg-red-600"></div>
               <div>
-                <h3 className="text-xl font-bold text-gray-900 mb-1 font-title">Connect Wallet</h3>
-                <p className="text-sm text-gray-600">Unlock x402-gated features and services</p>
+                <h1 className="text-[clamp(3rem,8vw,8rem)] font-bold leading-[0.9] text-black mb-4 font-title tracking-tight">
+                  <GlitchText text="Atlas" delay={300} replayOnView inViewThreshold={0.6} />{' '}
+                  <span className="text-red-600">
+                    <GlitchText text="Workspace" delay={600} replayOnView inViewThreshold={0.6} />
+                  </span>
+                </h1>
+                <motion.p
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.8, delay: 0.3 }}
+                  className="text-[clamp(1rem,2vw,1.5rem)] text-gray-600 font-light leading-tight"
+                >
+                  Infrastructure for the x402 protocol
+                </motion.p>
               </div>
-              <button
-                onClick={connectWallet}
-                className="px-8 py-4 bg-red-600 hover:bg-red-700 text-white transition-all duration-300 font-medium rounded-lg shadow-md hover:shadow-lg"
-              >
-                Connect Now →
-              </button>
             </div>
-          </div>
-        ) : (
-          <div className="mb-12 p-8 border-2 border-gray-200 bg-gray-50 rounded-lg shadow-sm">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                  <h3 className="text-xl font-bold text-gray-900 font-title">Connected</h3>
+          </motion.div>
+        </motion.div>
+        
+        {/* Wallet Connection Banner - Premium Design */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 0.4 }}
+          className="mb-16"
+        >
+          {!isConnected ? (
+            <div className="p-8 md:p-10 border-2 border-dashed border-red-600 bg-white relative">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
+                <div>
+                  <h3 className="text-2xl font-bold text-black mb-2 font-title">Connect Wallet</h3>
+                  <p className="text-gray-600 font-light">Unlock x402-gated features and services</p>
                 </div>
-                <p className="text-sm text-gray-600 font-mono">{formatAddress(address!)}</p>
+                <MagneticButton>
+                  <button
+                    onClick={connectWallet}
+                    className="group inline-flex items-center justify-center gap-3 px-8 py-4 bg-red-600 text-white font-medium transition-all duration-300 hover:bg-red-700 text-lg border-2 border-black"
+                  >
+                    <span>Connect Now</span>
+                    <svg className="w-5 h-5 transition-transform duration-300 group-hover:translate-x-1 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                </MagneticButton>
               </div>
-              <button
-                onClick={() => disconnect()}
-                className="px-6 py-3 bg-white hover:bg-gray-100 text-gray-900 transition-all duration-300 font-medium border-2 border-gray-300 rounded-lg shadow-sm"
-              >
-                Disconnect
-              </button>
             </div>
-          </div>
-        )}
+          ) : (
+            <div className="p-8 md:p-10 border-2 border-dashed border-black bg-white relative">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
+                <div>
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="w-2 h-2 bg-red-600 rounded-full"></div>
+                    <h3 className="text-2xl font-bold text-black font-title">Connected</h3>
+                  </div>
+                  <p className="text-gray-600 font-mono font-light">{formatAddress(address!)}</p>
+                </div>
+                <MagneticButton>
+                  <button
+                    onClick={() => disconnect()}
+                    className="px-6 py-3 bg-white text-black font-medium border-2 border-black transition-all duration-300 hover:bg-black hover:text-white"
+                  >
+                    Disconnect
+                  </button>
+                </MagneticButton>
+              </div>
+            </div>
+          )}
+        </motion.div>
         
-        {/* Category-based Layout */}
-        {['Analytics', 'Creation', 'Discovery', 'Integration', 'AI'].map(category => {
+        {/* Category-based Layout with Premium Design */}
+        {['Analytics', 'Creation', 'Discovery', 'Integration', 'AI'].map((category, catIndex) => {
           const categoryUtils = utilities.filter(u => u.category === category);
           if (categoryUtils.length === 0) return null;
           
           return (
-            <div key={category} className="mb-16">
-              <div className="flex items-center gap-3 mb-6">
-                <h2 className="text-2xl font-bold text-gray-900 font-title">{category}</h2>
-                <div className="flex-1 h-px bg-gradient-to-r from-red-600 to-gray-200"></div>
+            <motion.div
+              key={category}
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.7, delay: catIndex * 0.1 }}
+              className="mb-20 md:mb-28"
+            >
+              <div className="flex items-center gap-4 mb-10">
+                <h2 className="text-[clamp(2rem,5vw,4rem)] font-bold text-black font-title tracking-tight">
+                  {category}
+                </h2>
+                <div className="flex-1 h-px bg-gradient-to-r from-red-600 via-black to-transparent"></div>
               </div>
               
-              <div className="grid md:grid-cols-2 gap-6">
+              <div className="grid md:grid-cols-2 gap-6 md:gap-8">
                 {categoryUtils.map((utility, index) => (
-                  <button
-                    key={index}
-                    onClick={() => router.push(utility.href)}
-                    className="group relative overflow-hidden text-left transition-all duration-300 hover:scale-[1.01]"
-                  >
-                    <div className="relative border-2 border-gray-200 hover:border-red-600 transition-all duration-300 p-8 bg-white rounded-lg shadow-sm hover:shadow-lg m-[2px]">
-                      {/* Status */}
-                      <div className="flex items-end justify-end mb-4">
-                        <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                          <span className="text-green-600 text-xs font-medium uppercase tracking-wider">
-                            {utility.status}
+                  <HoverRevealCard key={index} delay={index * 0.1}>
+                    <button
+                      onClick={() => router.push(utility.href)}
+                      className="group w-full text-left"
+                    >
+                      <div className="bg-white p-8 md:p-10 border-2 border-dashed border-black h-full relative transition-all duration-300 hover:border-red-600">
+                        {/* Number Badge */}
+                        <div className="mb-6">
+                          <span className="text-xl font-bold text-red-600 tracking-wider font-title">
+                            {utility.number}
                           </span>
                         </div>
+
+                        {/* Status */}
+                        <div className="flex items-end justify-end mb-4">
+                          <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 bg-red-600 rounded-full"></div>
+                            <span className="text-red-600 text-xs font-medium uppercase tracking-wider">
+                              {utility.status}
+                            </span>
+                          </div>
+                        </div>
+                        
+                        {/* Title */}
+                        <h3 className="text-2xl md:text-3xl font-bold text-black mb-4 group-hover:text-red-600 transition-colors font-title">
+                          {utility.name}
+                        </h3>
+                        
+                        {/* Description */}
+                        <p className="text-gray-700 font-light leading-relaxed mb-8 text-sm md:text-base">
+                          {utility.description}
+                        </p>
+                        
+                        {/* Launch CTA */}
+                        <div className="flex items-center justify-between">
+                          <div className="text-red-600 text-sm font-medium uppercase tracking-wider font-title">
+                            Launch
+                          </div>
+                          <svg className="w-5 h-5 text-red-600 transition-transform duration-300 group-hover:translate-x-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                          </svg>
+                        </div>
                       </div>
-                      
-                      {/* Title */}
-                      <h3 className="text-2xl font-bold text-gray-900 mb-3 group-hover:text-red-600 transition-colors font-title">
-                        {utility.name}
-                      </h3>
-                      
-                      {/* Description */}
-                      <p className="text-gray-600 text-sm leading-relaxed mb-6">
-                        {utility.description}
-                      </p>
-                      
-                      {/* Launch Button */}
-                      <div className="flex items-center justify-between">
-                        <div className="text-red-600 text-sm font-medium uppercase tracking-wider">Launch</div>
-                        <svg className="w-5 h-5 text-red-600 transition-transform duration-300 group-hover:translate-x-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                        </svg>
-                      </div>
-                    </div>
-                  </button>
+                    </button>
+                  </HoverRevealCard>
                 ))}
               </div>
-            </div>
+            </motion.div>
           );
         })}
 
-        {/* Resources Section */}
-        <div className="mt-20 pt-12 border-t-2 border-gray-200">
-          <h2 className="text-2xl font-bold text-gray-900 mb-8 font-title">Developer Resources</h2>
-          <div className="grid sm:grid-cols-3 gap-6">
-            <Link
-              href="/docs"
-              className="p-6 bg-white border-2 border-gray-200 hover:border-red-600 transition-all duration-300 group rounded-lg shadow-sm hover:shadow-md"
-            >
-              <h3 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-red-600 transition-colors font-title">Documentation</h3>
-              <p className="text-sm text-gray-600">Learn how to integrate x402</p>
-            </Link>
-            <Link
-              href="/docs/api-reference"
-              className="p-6 bg-white border-2 border-gray-200 hover:border-red-600 transition-all duration-300 group rounded-lg shadow-sm hover:shadow-md"
-            >
-              <h3 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-red-600 transition-colors font-title">API Reference</h3>
-              <p className="text-sm text-gray-600">Complete API documentation</p>
-            </Link>
-            <a
-              href="https://github.com/atlas402"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="p-6 bg-white border-2 border-gray-200 hover:border-red-600 transition-all duration-300 group rounded-lg shadow-sm hover:shadow-md"
-            >
-              <h3 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-red-600 transition-colors font-title">GitHub</h3>
-              <p className="text-sm text-gray-600">Explore open-source code</p>
-            </a>
+        {/* Resources Section - Premium Design */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.7 }}
+          className="mt-32 pt-16 border-t-2 border-dashed border-black"
+        >
+          <h2 className="text-[clamp(2rem,5vw,4rem)] font-bold text-black mb-12 font-title tracking-tight">
+            Developer Resources
+          </h2>
+          <div className="grid sm:grid-cols-3 gap-6 md:gap-8">
+            <HoverRevealCard delay={0.1}>
+              <Link
+                href="/docs"
+                className="block p-8 md:p-10 bg-white border-2 border-dashed border-black h-full group transition-all duration-300 hover:border-red-600"
+              >
+                <h3 className="text-xl md:text-2xl font-bold text-black mb-3 group-hover:text-red-600 transition-colors font-title">
+                  Documentation
+                </h3>
+                <p className="text-gray-700 font-light leading-relaxed">Learn how to integrate x402</p>
+              </Link>
+            </HoverRevealCard>
+            <HoverRevealCard delay={0.2}>
+              <Link
+                href="/docs/api-reference"
+                className="block p-8 md:p-10 bg-white border-2 border-dashed border-black h-full group transition-all duration-300 hover:border-red-600"
+              >
+                <h3 className="text-xl md:text-2xl font-bold text-black mb-3 group-hover:text-red-600 transition-colors font-title">
+                  API Reference
+                </h3>
+                <p className="text-gray-700 font-light leading-relaxed">Complete API documentation</p>
+              </Link>
+            </HoverRevealCard>
+            <HoverRevealCard delay={0.3}>
+              <a
+                href="https://github.com/atlas402"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block p-8 md:p-10 bg-white border-2 border-dashed border-black h-full group transition-all duration-300 hover:border-red-600"
+              >
+                <h3 className="text-xl md:text-2xl font-bold text-black mb-3 group-hover:text-red-600 transition-colors font-title">
+                  GitHub
+                </h3>
+                <p className="text-gray-700 font-light leading-relaxed">Explore open-source code</p>
+              </a>
+            </HoverRevealCard>
           </div>
-        </div>
+        </motion.div>
 
-        {/* Stats Footer */}
-        <div className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-6">
-          <div className="p-6 border-2 border-gray-200 bg-white rounded-lg shadow-sm">
-            <div className="text-3xl font-bold text-red-600 mb-1 font-title">6</div>
-            <div className="text-sm text-gray-600 uppercase tracking-wider">Utilities</div>
-          </div>
-          <div className="p-6 border-2 border-gray-200 bg-white rounded-lg shadow-sm">
-            <div className="text-3xl font-bold text-red-600 mb-1 font-title">2</div>
-            <div className="text-sm text-gray-600 uppercase tracking-wider">Networks</div>
-          </div>
-          <div className="p-6 border-2 border-gray-200 bg-white rounded-lg shadow-sm">
-            <div className="text-3xl font-bold text-red-600 mb-1 font-title">∞</div>
-            <div className="text-sm text-gray-600 uppercase tracking-wider">Services</div>
-          </div>
-          <div className="p-6 border-2 border-gray-200 bg-white rounded-lg shadow-sm">
-            <div className="text-3xl font-bold text-red-600 mb-1 font-title">24/7</div>
-            <div className="text-sm text-gray-600 uppercase tracking-wider">Uptime</div>
-          </div>
-        </div>
+        {/* Stats Footer - Premium Design */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.7 }}
+          className="mt-24 grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8"
+        >
+          {[
+            { value: '6', label: 'Utilities' },
+            { value: '2', label: 'Networks' },
+            { value: '∞', label: 'Services' },
+            { value: '24/7', label: 'Uptime' }
+          ].map((stat, index) => (
+            <motion.div
+              key={index}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: index * 0.1 }}
+            >
+              <div className="p-8 md:p-10 bg-white border-2 border-dashed border-black text-center">
+                <div className="text-4xl md:text-5xl font-bold text-red-600 mb-2 font-title">
+                  {stat.value}
+                </div>
+                <div className="text-xs md:text-sm text-gray-600 uppercase tracking-wider font-light">
+                  {stat.label}
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </motion.div>
       </main>
     </div>
   );
