@@ -38,7 +38,7 @@ export default function OperatorDocsPage() {
         variant="left"
         eyebrow="Atlas Operator"
         title="AI-Powered Automation"
-        dek="Autonomous AI operator with full access to x402 services. Execute workflows, mint tokens, and interact with services with approval guardrails.'
+        dek="Autonomous AI operator with full access to x402 services. Execute workflows, mint tokens, and interact with services with approval guardrails."
         className="mb-24"
       />
 
