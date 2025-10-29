@@ -51,19 +51,45 @@ export function TokenMarketplace({ onMintToken }: TokenMarketplaceProps) {
   const fetchAllTokens = async () => {
     try {
       setLoading(true);
+      setError(null);
+      
+      console.log('🔄 Fetching tokens from sources...');
       
       // Fetch Atlas Mints from database (priority)
-      const [atlasRes, marketplaceRes] = await Promise.all([
-        fetch('/api/admin/x402/services'),
-        fetch('/api/x402/discover'),
-      ]);
+      let atlasRes: Response;
+      let marketplaceRes: Response;
+      
+      try {
+        atlasRes = await fetch('/api/admin/x402/services');
+        console.log('✅ Atlas services response:', atlasRes.status, atlasRes.statusText);
+      } catch (err) {
+        console.error('❌ Failed to fetch Atlas services:', err);
+        atlasRes = new Response(JSON.stringify({ success: false, data: [] }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+      
+      try {
+        marketplaceRes = await fetch('/api/x402/discover');
+        console.log('✅ Discover services response:', marketplaceRes.status, marketplaceRes.statusText);
+      } catch (err) {
+        console.error('❌ Failed to fetch marketplace services:', err);
+        marketplaceRes = new Response(JSON.stringify({ success: false, services: [] }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
 
-      const atlasData = await atlasRes.json();
-      const marketplaceData = await marketplaceRes.json();
+      const atlasData = await atlasRes.json().catch(() => ({ success: false, data: [] }));
+      const marketplaceData = await marketplaceRes.json().catch(() => ({ success: false, services: [] }));
+
+      console.log('📊 Atlas data:', { success: atlasData.success, count: atlasData.data?.length || 0 });
+      console.log('📊 Marketplace data:', { success: marketplaceData.success, count: marketplaceData.services?.length || 0 });
 
       // Filter Atlas services for tokens created via our platform
       let atlasTokens: X402Service[] = [];
-      if (atlasData.success && atlasData.data) {
+      if (atlasData.success && atlasData.data && Array.isArray(atlasData.data)) {
         const tokens = atlasData.data.filter((service: any) => 
           service.category === 'Tokens' || service.metadata?.tokenSymbol
         );
@@ -93,10 +119,13 @@ export function TokenMarketplace({ onMintToken }: TokenMarketplaceProps) {
         
         setAtlasMints(atlasTokens);
         console.log(`✅ Loaded ${atlasTokens.length} Atlas Mints from database`);
+      } else {
+        console.warn('⚠️ Atlas services data invalid:', atlasData);
       }
 
       // Filter marketplace tokens (from Atlas Network facilitator)
-      if (marketplaceData.success && marketplaceData.services) {
+      let marketplaceTokens: X402Service[] = [];
+      if (marketplaceData.success && marketplaceData.services && Array.isArray(marketplaceData.services)) {
         const tokens = marketplaceData.services.filter((service: X402Service) => 
           service.category === 'Tokens'
         );
@@ -106,19 +135,35 @@ export function TokenMarketplace({ onMintToken }: TokenMarketplaceProps) {
         const uniqueTokens = tokens.filter(token => 
           !atlasEndpoints.has(token.endpoint) && !atlasIds.has(token.id)
         );
+        marketplaceTokens = uniqueTokens;
         setMarketplaceTokens(uniqueTokens);
         console.log(`✅ Loaded ${uniqueTokens.length} marketplace tokens from Atlas Network`);
+      } else {
+        console.warn('⚠️ Marketplace services data invalid:', marketplaceData);
       }
 
-      setError(null);
+      // Only show error if BOTH sources failed AND no tokens found
+      const totalTokens = atlasTokens.length + marketplaceTokens.length;
+      if (!atlasData.success && !marketplaceData.success && totalTokens === 0) {
+        setError(`Unable to connect to token sources. Atlas: ${atlasData.error || 'failed'}, Marketplace: ${marketplaceData.error || 'failed'}`);
+      } else if (totalTokens === 0 && atlasData.success && marketplaceData.success) {
+        // Both sources succeeded but no tokens found - this is okay, just show empty state
+        setError(null);
+      } else {
+        setError(null);
+      }
+      
       setLastRefresh(new Date());
       
       // Fetch token data for each token
-      const allTokens = [...atlasTokens, ...uniqueTokens];
-      fetchTokenDataForTokens(allTokens);
-    } catch (err) {
-      console.error('Error fetching tokens:', err);
-      setError('Unable to connect to token sources');
+      const allTokens = [...atlasTokens, ...marketplaceTokens];
+      console.log(`📊 Total tokens found: ${allTokens.length}`);
+      if (allTokens.length > 0) {
+        fetchTokenDataForTokens(allTokens);
+      }
+    } catch (err: any) {
+      console.error('❌ Error fetching tokens:', err);
+      setError(`Unable to connect to token sources: ${err.message || 'Unknown error'}`);
     } finally {
       setLoading(false);
     }
