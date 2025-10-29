@@ -3,21 +3,18 @@ import { X402_CONFIG, TOKENS } from '@/lib/x402-config';
 
 export async function GET(req: NextRequest) {
   try {
-    // Get merchant URL from environment or request headers
-    // For api.atlas402.com subdomain, use it directly
-    const host = req.headers.get('host') || process.env.NEXT_PUBLIC_MERCHANT_URL || 'api.atlas402.com';
-    
-    // Ensure we use https://api.atlas402.com format
+    // Get merchant URL - prioritize environment variable, then request headers
     let merchantUrl: string;
-    if (host.startsWith('http')) {
-      merchantUrl = host;
-    } else if (host.includes('api.atlas402.com')) {
-      merchantUrl = `https://${host}`;
-    } else if (host.includes('atlas402.com')) {
-      // If main domain, use api subdomain
-      merchantUrl = 'https://api.atlas402.com';
+    
+    if (process.env.NEXT_PUBLIC_MERCHANT_URL) {
+      // Use environment variable if set (most reliable)
+      merchantUrl = process.env.NEXT_PUBLIC_MERCHANT_URL.startsWith('http') 
+        ? process.env.NEXT_PUBLIC_MERCHANT_URL 
+        : `https://${process.env.NEXT_PUBLIC_MERCHANT_URL}`;
     } else {
-      merchantUrl = `https://${host}`;
+      // Fallback to request host header
+      const host = req.headers.get('host') || 'api.atlas402.com';
+      merchantUrl = host.startsWith('http') ? host : `https://${host}`;
     }
     
     // Format according to x402 standard for merchant discovery

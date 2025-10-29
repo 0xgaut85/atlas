@@ -2,13 +2,25 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(req: NextRequest) {
   try {
-    const host = req.headers.get('host') || process.env.NEXT_PUBLIC_MERCHANT_URL || 'api.atlas402.com';
-    const merchantUrl = host.startsWith('http') ? host : `https://${host}`;
+    // Get merchant URL - prioritize environment variable, then request headers
+    let merchantUrl: string;
+    
+    if (process.env.NEXT_PUBLIC_MERCHANT_URL) {
+      merchantUrl = process.env.NEXT_PUBLIC_MERCHANT_URL.startsWith('http') 
+        ? process.env.NEXT_PUBLIC_MERCHANT_URL 
+        : `https://${process.env.NEXT_PUBLIC_MERCHANT_URL}`;
+    } else {
+      const host = req.headers.get('host') || 'api.atlas402.com';
+      merchantUrl = host.startsWith('http') ? host : `https://${host}`;
+    }
+    
+    // Extract domain name for merchant field
+    const merchantDomain = merchantUrl.replace(/^https?:\/\//, '').replace(/^www\./, '');
     
     return NextResponse.json({
       status: 'operational',
       timestamp: new Date().toISOString(),
-      merchant: merchantUrl.includes('api.atlas402.com') ? 'api.atlas402.com' : merchantUrl,
+      merchant: merchantDomain,
       x402Version: '1.0',
       endpoints: {
         info: `${merchantUrl}/api/x402/info`,

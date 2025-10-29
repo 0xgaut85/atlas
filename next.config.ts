@@ -70,6 +70,17 @@ const nextConfig: NextConfig = {
           ],
           destination: '/explorer',
         },
+        // Ensure api.atlas402.com serves API endpoints
+        {
+          source: '/api/:path*',
+          has: [
+            {
+              type: 'host',
+              value: 'api.atlas402.com',
+            },
+          ],
+          destination: '/api/:path*',
+        },
       ],
       afterFiles: [],
       fallback: [],
