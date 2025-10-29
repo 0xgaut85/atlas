@@ -57,9 +57,9 @@ export default function AtlasHero({ mode = 'cubes' }: AtlasHeroProps) {
     const backScene = new THREE.Scene();
     const backCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
 
-    // Camera - Vertical view from top
-    const camera = new THREE.PerspectiveCamera(75, 1, 0.1, 2000);
-    camera.position.set(0, 150, 0);
+    // Camera
+    const camera = new THREE.PerspectiveCamera(52, 1, 0.1, 2000);
+    camera.position.set(0, 26, 112);
     camera.lookAt(0, 0, 0);
 
     scene.add(new THREE.AmbientLight(0xffffff, 0.2));
@@ -121,10 +121,10 @@ export default function AtlasHero({ mode = 'cubes' }: AtlasHeroProps) {
 
     console.log('AtlasHero: Background ready');
 
-    // ----- Grid geometry for particles - Vertical orientation -----
-    const GRID_W = 200, GRID_D = 300, SEG_X = 128, SEG_Z = 256;
+    // ----- Grid geometry for particles -----
+    const GRID_W = 300, GRID_D = 200, SEG_X = 256, SEG_Z = 128;
     const gridGeo = new THREE.PlaneGeometry(GRID_W, GRID_D, SEG_X, SEG_Z);
-    // Keep grid vertical (no rotation needed)
+    gridGeo.rotateX(-Math.PI / 2);
 
     console.log('AtlasHero: Grid geometry ready');
 
@@ -199,34 +199,18 @@ export default function AtlasHero({ mode = 'cubes' }: AtlasHeroProps) {
         varying float vPhase;
         varying vec3 vNormal;
         
-        uniform vec2 uMouse;
-        
         void main() {
           vec3 gridPos = instancePosition;
           float t = uTime;
           
-          // Apply wave displacement - vertical movement
-          float n1 = snoise(vec3(gridPos.x * 0.03 + t * 0.015, gridPos.y * 0.05, t * 0.05));
-          float n2 = snoise(vec3(gridPos.x * 0.08 + 20.0, gridPos.y * 0.02 - 17.0, t * 0.09)) * 0.5;
-          float wave = sin(gridPos.x * 0.08 + t * 0.6) * 0.4 + sin(gridPos.y * 0.11 + t * 0.45) * 0.3;
+          // Apply wave displacement
+          float n1 = snoise(vec3(gridPos.x * 0.03 + t * 0.015, gridPos.z * 0.05, t * 0.05));
+          float n2 = snoise(vec3(gridPos.x * 0.08 + 20.0, gridPos.z * 0.02 - 17.0, t * 0.09)) * 0.5;
+          float wave = sin(gridPos.x * 0.08 + t * 0.6) * 0.4 + sin(gridPos.z * 0.11 + t * 0.45) * 0.3;
           
-          // Mouse interaction - smooth attraction (repulsion effect)
-          vec2 mouseInfluence = uMouse * 0.8;
-          vec2 toMouse = mouseInfluence - vec2(gridPos.x, gridPos.y);
-          float dist = length(toMouse);
-          float mouseEffect = smoothstep(60.0, 0.0, dist) * 1.5;
-          
-          // Soft push away from mouse
-          vec2 mouseOffset = vec2(0.0);
-          if (dist > 0.01) {
-            mouseOffset = normalize(toMouse) * mouseEffect * 0.8;
-          }
-          
-          float depthAtten = smoothstep(-150.0, 150.0, gridPos.y);
+          float depthAtten = smoothstep(-80.0, 80.0, gridPos.z);
           float amp = mix(1.0, 0.2, depthAtten);
-          gridPos.z += (n1 + n2 + wave) * 3.0 * amp;
-          gridPos.x += mouseOffset.x * amp;
-          gridPos.y += mouseOffset.y * amp;
+          gridPos.y += (n1 + n2 + wave) * 3.0 * amp;
           
           // Apply cube vertex position with slight rotation
           float rot = sin(t * 0.3 + instancePhase * 6.28318) * 0.3;
@@ -298,17 +282,8 @@ export default function AtlasHero({ mode = 'cubes' }: AtlasHeroProps) {
     cubeGeo.setAttribute('instancePosition', new THREE.InstancedBufferAttribute(instancePositions, 3));
     cubeGeo.setAttribute('instancePhase', new THREE.InstancedBufferAttribute(instancePhases, 1));
     
-    // Position nodes vertically centered
-    nodes.position.set(0, 0, 0);
+    nodes.position.set(0, -6, 50);
     scene.add(nodes);
-    
-    // Mouse tracking for smooth cube movement
-    const mouse = new THREE.Vector2(0, 0);
-    const targetMouse = new THREE.Vector2(0, 0);
-    
-    // Add mouse tracking uniform to cube material
-    cubeUniforms.uMouse = { value: new THREE.Vector2(0, 0) };
-    cubeMat.uniforms = cubeUniforms;
 
     console.log('AtlasHero: Nodes ready');
 
@@ -465,16 +440,6 @@ export default function AtlasHero({ mode = 'cubes' }: AtlasHeroProps) {
 
     console.log('AtlasHero: Composer ready');
 
-    // ----- Mouse tracking -----
-    const handleMouseMove = (e: MouseEvent) => {
-      const rect = el.getBoundingClientRect();
-      const x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-      const y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-      targetMouse.set(x * GRID_W * 0.5, y * GRID_D * 0.5);
-    };
-    
-    el.addEventListener('mousemove', handleMouseMove);
-    
     // ----- Resize -----
     const onSize = () => {
       const { w, h } = sizeToEl();
@@ -491,18 +456,12 @@ export default function AtlasHero({ mode = 'cubes' }: AtlasHeroProps) {
     const loop = () => {
       const t = clock.getElapsedTime();
       
-      // Smooth mouse tracking
-      mouse.lerp(targetMouse, 0.05);
-      if (cubeUniforms.uMouse) {
-        cubeUniforms.uMouse.value.set(mouse.x, mouse.y);
-      }
-      
       // Update all uniforms - this animates BOTH grid cubes AND voxel statue cubes
       gradientUniforms.uTime.value = t;
       cubeUniforms.uTime.value = t;
       
-      // Animate grid cubes - vertical movement
-      nodes.position.y = Math.sin(t * 0.1) * 2.0;
+      // Animate grid cubes
+      nodes.position.x = Math.sin(t * 0.1) * 2.0;
       
       // Animate statue (subtle rotation only - cubes already wave via shader)
       if (statueGroup) {
@@ -567,9 +526,6 @@ export default function AtlasHero({ mode = 'cubes' }: AtlasHeroProps) {
         (statueVoxelMesh.material as THREE.Material).dispose();
         scene.remove(statueVoxelMesh);
       }
-      
-      // Cleanup mouse event listener
-      el.removeEventListener('mousemove', handleMouseMove);
     };
   }, [mode]);
 
