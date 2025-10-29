@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useAppKitAccount } from '@reown/appkit/react';
-import { useSendTransaction, useWaitForTransactionReceipt, useSwitchChain } from 'wagmi';
-import { parseUnits, encodeFunctionData, erc20Abi } from 'viem';
+import { useState } from 'react';
+import { useAppKitAccount, useAppKitProvider } from '@reown/appkit/react';
+import type { Provider } from '@reown/appkit-adapter-wagmi';
+import { makeX402Request } from '@/lib/x402-client';
 import { X402Service } from '@/lib/payai-client';
-import { USDC_CONTRACT_ADDRESS, getNetworkChainId, getNetworkName } from '@/lib/x402-utils';
+import { getNetworkName } from '@/lib/x402-utils';
 
 interface RealPaymentHandlerProps {
   service: X402Service;
@@ -17,7 +17,7 @@ interface RealPaymentHandlerProps {
   successText?: string; // Optional success text, defaults to "Payment Successful!"
 }
 
-type PaymentStep = 'check' | 'switch-network' | 'approve' | 'approving' | 'pay' | 'paying' | 'success' | 'error';
+type PaymentStep = 'pay' | 'paying' | 'calling-service' | 'success' | 'error';
 
 export function RealPaymentHandler({ 
   service, 
@@ -28,180 +28,94 @@ export function RealPaymentHandler({
   actionText = "Send Payment",
   successText = "Payment Successful!"
 }: RealPaymentHandlerProps) {
-  const { address, caipAddress } = useAppKitAccount();
-  const { switchChain } = useSwitchChain();
+  const { address } = useAppKitAccount();
+  const { walletProvider } = useAppKitProvider<Provider>('eip155');
   
-  // Extract chainId from caipAddress (format: "eip155:8453:0x...")
-  const chainId = caipAddress ? parseInt(caipAddress.split(':')[1]) : undefined;
-  
-  const [step, setStep] = useState<PaymentStep>('check');
+  const [step, setStep] = useState<PaymentStep>('pay');
   const [error, setError] = useState<string | null>(null);
-  const [approveTxHash, setApproveTxHash] = useState<string>('');
   const [paymentTxHash, setPaymentTxHash] = useState<string>('');
 
-  // Get payment details from service
-  const payToAddress = service.accepts?.[0]?.payTo;
-  const usdcAddress = USDC_CONTRACT_ADDRESS[service.price.network];
-  const maxAmountRequired = service.accepts?.[0]?.maxAmountRequired || '1000000'; // Default 1.00 USDC
-  const targetChainId = getNetworkChainId(service.price.network);
+  const amountMicro = Number(service.accepts?.[0]?.maxAmountRequired || '1000000');
+  const amountUSD = (amountMicro / 1_000_000).toFixed(2);
   const networkName = getNetworkName(service.price.network);
 
-  // Send approve transaction
-  const { 
-    sendTransaction: sendApprove, 
-    data: approveData,
-    isPending: isApprovePending,
-    error: approveError 
-  } = useSendTransaction();
-
-  // Wait for approve confirmation
-  const { isLoading: isApproveConfirming, isSuccess: isApproveSuccess } = useWaitForTransactionReceipt({
-    hash: approveData,
-  });
-
-  // Send payment transaction
-  const { 
-    sendTransaction: sendPayment, 
-    data: paymentData,
-    isPending: isPaymentPending,
-    error: paymentError 
-  } = useSendTransaction();
-
-  // Wait for payment confirmation
-  const { isLoading: isPaymentConfirming, isSuccess: isPaymentSuccess } = useWaitForTransactionReceipt({
-    hash: paymentData,
-  });
-
-  // Check if on correct network
-  useEffect(() => {
-    if (!address) {
-      setError('Please connect your wallet');
+  const handlePayment = async () => {
+    if (!address || !walletProvider) {
+      const err = 'Please connect your wallet';
+      setError(err);
       setStep('error');
+      onError(err);
       return;
     }
 
-    if (!payToAddress || !usdcAddress || !targetChainId) {
-      setError('Service payment configuration incomplete');
-      setStep('error');
-      return;
-    }
+    setStep('paying');
+    setError(null);
 
-    if (chainId !== targetChainId) {
-      setStep('switch-network');
-    } else {
-      setStep('approve');
-    }
-  }, [address, chainId, targetChainId, payToAddress, usdcAddress]);
-
-  // Handle approve confirmation
-  useEffect(() => {
-    if (isApproveSuccess && approveData) {
-      setApproveTxHash(approveData);
-      setStep('pay');
-    }
-  }, [isApproveSuccess, approveData]);
-
-  // Handle payment confirmation
-  useEffect(() => {
-    if (isPaymentSuccess && paymentData) {
-      setPaymentTxHash(paymentData);
-      setStep('success');
+    try {
+      // Step 1: Pay via x402-protected service payment endpoint
+      console.log('🌐 Making x402 payment call to service payment endpoint...');
+      const paymentResponse = await makeX402Request(
+        walletProvider,
+        '/api/x402/payment/service-payment',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            amount: amountUSD,
+            serviceName: service.name,
+            serviceId: service.id,
+            endpoint: service.endpoint,
+            category: 'service',
+          }),
+        }
+      );
       
-      // Track the payment for analytics
-      const trackPayment = async () => {
+      if (!paymentResponse.ok) {
+        throw new Error(`Service payment failed: ${paymentResponse.status} ${paymentResponse.statusText}`);
+      }
+      
+      const paymentData = await paymentResponse.json();
+      setPaymentTxHash(paymentData.payment?.transactionHash || 'unknown');
+      console.log('✅ Service payment successful:', paymentData);
+      
+      // Step 2: If service endpoint is provided, call the actual service
+      if (service.endpoint) {
+        setStep('calling-service');
+        
         try {
-          const amountNum = Number(maxAmountRequired) / 1_000_000;
-          let category: 'access' | 'registration' | 'mint' | 'service' | 'other' = 'other';
+          console.log('🌐 Calling service endpoint:', service.endpoint);
+          const serviceResponse = await makeX402Request(
+            walletProvider,
+            service.endpoint,
+            { method: 'GET' }
+          );
           
-          // Categorize based on amount and title
-          if (Math.abs(amountNum - 1) < 0.01) {
-            category = 'access';
-          } else if (Math.abs(amountNum - 50) < 0.01) {
-            category = 'registration';
-          } else if (title.toLowerCase().includes('mint')) {
-            category = 'mint';
-          } else {
-            category = 'service';
+          if (!serviceResponse.ok) {
+            throw new Error(`Service call failed: ${serviceResponse.status} ${serviceResponse.statusText}`);
           }
           
-          await fetch('/api/admin/payment-tracker', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              txHash: paymentData,
-              network: service.price.network,
-              from: address,
-              to: payToAddress,
-              amountMicro: Number(maxAmountRequired),
-              category,
-              service: service.name,
-              metadata: {
-                serviceId: service.id,
-                endpoint: service.endpoint
-              }
-            })
-          });
-          console.log('✅ Payment tracked:', paymentData);
-        } catch (e) {
-          console.error('Failed to track payment:', e);
+          const serviceData = await serviceResponse.json();
+          console.log('✅ Service call successful:', serviceData);
+          
+          setStep('success');
+          onSuccess(paymentTxHash || 'unknown');
+        } catch (serviceError: any) {
+          console.error('Service call error:', serviceError);
+          // Payment succeeded, but service call failed - still show success
+          setStep('success');
+          onSuccess(paymentTxHash || 'unknown');
         }
-      };
-      
-      trackPayment();
-      onSuccess(paymentData);
-    }
-  }, [isPaymentSuccess, paymentData, onSuccess, address, payToAddress, maxAmountRequired, service, title]);
-
-  // Handle errors
-  useEffect(() => {
-    if (approveError) {
-      setError(approveError.message);
+      } else {
+        // No service endpoint - just report payment success
+        setStep('success');
+        onSuccess(paymentTxHash || 'unknown');
+      }
+    } catch (err: any) {
+      const errorMsg = err.message || 'Payment failed';
+      setError(errorMsg);
       setStep('error');
-      onError(approveError.message);
+      onError(errorMsg);
     }
-    if (paymentError) {
-      setError(paymentError.message);
-      setStep('error');
-      onError(paymentError.message);
-    }
-  }, [approveError, paymentError, onError]);
-
-  const handleSwitchNetwork = async () => {
-    if (!targetChainId) return;
-    try {
-      await switchChain({ chainId: targetChainId });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to switch network');
-      setStep('error');
-    }
-  };
-
-  const handleApprove = () => {
-    if (!usdcAddress || !payToAddress) return;
-    
-    setStep('approving');
-    sendApprove({
-      to: usdcAddress,
-      data: encodeFunctionData({
-        abi: erc20Abi,
-        functionName: 'approve',
-        args: [payToAddress as `0x${string}`, BigInt(maxAmountRequired)]
-      })
-    });
-  };
-
-  const handlePayment = () => {
-    if (!usdcAddress || !payToAddress) return;
-    
-    setStep('paying');
-    sendPayment({
-      to: usdcAddress,
-      data: encodeFunctionData({
-        abi: erc20Abi,
-        functionName: 'transfer',
-        args: [payToAddress as `0x${string}`, BigInt(maxAmountRequired)]
-      })
-    });
   };
 
   return (
@@ -245,66 +159,35 @@ export function RealPaymentHandler({
 
           {/* Payment Steps */}
           <div className="space-y-4">
-            {/* Step 1: Switch Network */}
-            {step === 'switch-network' && (
+            {/* Pay Button */}
+            {(step === 'pay' || step === 'paying' || step === 'calling-service') && (
               <div className="border-2 border-dashed border-black p-4 bg-white">
                 <div className="flex items-start gap-3">
-                  <span className="w-6 h-6 bg-red-600 text-white rounded-full flex items-center justify-center text-sm flex-shrink-0">1</span>
+                  <span className="w-6 h-6 bg-red-600 text-white rounded-full flex items-center justify-center text-sm flex-shrink-0">
+                    {step === 'pay' ? '1' : step === 'paying' ? '1' : '2'}
+                  </span>
                   <div className="flex-1">
-                    <h4 className="font-bold text-black mb-2">Switch Network</h4>
+                    <h4 className="font-bold text-black mb-2">
+                      {step === 'pay' || step === 'paying' ? actionText : 'Calling Service...'}
+                    </h4>
                     <p className="text-sm text-gray-700 mb-3">
-                      Please switch to {networkName} to continue
+                      {step === 'pay' || step === 'paying' 
+                        ? `Pay ${amountUSD} USDC ${title.toLowerCase().includes('mint') ? 'to mint the token' : 'to use the service'}`
+                        : 'Processing service request...'}
                     </p>
-                    <button
-                      onClick={handleSwitchNetwork}
-                      className="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-                    >
-                      Switch to {networkName}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Step 2: Approve USDC */}
-            {(step === 'approve' || step === 'approving') && (
-              <div className="border-2 border-dashed border-black p-4 bg-white">
-                <div className="flex items-start gap-3">
-                  <span className="w-6 h-6 bg-red-600 text-white rounded-full flex items-center justify-center text-sm flex-shrink-0">1</span>
-                  <div className="flex-1">
-                    <h4 className="font-bold text-black mb-2">Approve USDC Spending</h4>
-                    <p className="text-sm text-gray-700 mb-3">
-                      Allow the service to spend {service.price.amount} USDC from your wallet
-                    </p>
-                    <button
-                      onClick={handleApprove}
-                      disabled={isApprovePending || isApproveConfirming || step === 'approving'}
-                      className="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {isApprovePending || isApproveConfirming ? 'Approving...' : 'Approve USDC'}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Step 3: Send Payment */}
-            {(step === 'pay' || step === 'paying') && (
-              <div className="border-2 border-dashed border-black p-4 bg-white">
-                <div className="flex items-start gap-3">
-                  <span className="w-6 h-6 bg-red-600 text-white rounded-full flex items-center justify-center text-sm flex-shrink-0">2</span>
-                  <div className="flex-1">
-                    <h4 className="font-bold text-black mb-2">{actionText}</h4>
-                    <p className="text-sm text-gray-700 mb-3">
-                      Transfer {service.price.amount} USDC {title.toLowerCase().includes('mint') ? 'to mint the token' : 'to the service'}
-                    </p>
-                    <button
-                      onClick={handlePayment}
-                      disabled={isPaymentPending || isPaymentConfirming || step === 'paying'}
-                      className="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {isPaymentPending || isPaymentConfirming ? 'Processing...' : actionText}
-                    </button>
+                    {step === 'pay' && (
+                      <button
+                        onClick={handlePayment}
+                        className="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                      >
+                        {actionText}
+                      </button>
+                    )}
+                    {(step === 'paying' || step === 'calling-service') && (
+                      <div className="w-full px-4 py-2 bg-gray-200 text-gray-600 rounded-lg text-center">
+                        {step === 'paying' ? 'Processing payment...' : 'Calling service...'}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

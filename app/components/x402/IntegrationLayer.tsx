@@ -5,7 +5,7 @@ import { useAppKitAccount, useAppKitProvider } from '@reown/appkit/react';
 import type { Provider } from '@reown/appkit-adapter-wagmi';
 import { validateServiceEndpoint, validatePaymentAmount } from '@/lib/x402-utils';
 import { motion } from 'framer-motion';
-import { X402_CONFIG, TOKENS } from '@/lib/x402-config';
+import { makeX402Request } from '@/lib/x402-client';
 import Link from 'next/link';
 
 export function IntegrationLayer() {
@@ -737,7 +737,7 @@ export function IntegrationLayer() {
               </button>
               <button
                 onClick={async () => {
-                  if (!walletProvider) {
+                  if (!walletProvider || !address) {
                     alert('Wallet provider not available');
                     return;
                   }
@@ -745,77 +745,93 @@ export function IntegrationLayer() {
                   setIsPaying(true);
                   
                   try {
-                    // Get the connected address
-                    const accounts = await walletProvider.request({ method: 'eth_accounts' });
-                    const from = accounts[0];
-
-                    if (!from) {
-                      throw new Error('No connected account found');
-                    }
-
-                    // Convert $50 to micro-units (USDC has 6 decimals)
-                    const amountInMicro = 50 * 1_000_000; // 50 USDC
-                    const amountHex = '0x' + amountInMicro.toString(16).padStart(64, '0');
-
-                    // ERC-20 transfer function signature: transfer(address,uint256)
-                    const transferFunctionSignature = '0xa9059cbb';
-                    const recipientPadded = X402_CONFIG.payTo.substring(2).padStart(64, '0');
-                    
-                    const data = transferFunctionSignature + recipientPadded + amountHex.substring(2);
-
-                    // Send transaction to USDC contract on Base
-                    const txHash = await walletProvider.request({
-                      method: 'eth_sendTransaction',
-                      params: [{
-                        from,
-                        to: TOKENS.usdcEvm, // Base USDC contract
-                        data,
-                        value: '0x0',
-                      }],
-                    });
-
-                    console.log('$50 USDC registration fee paid:', txHash);
-                    
-                    // Track the registration payment
-                    try {
-                      await fetch('/api/admin/payment-tracker', {
+                    // Register service via x402-protected endpoint
+                    console.log('🌐 Registering service via x402...');
+                    const response = await makeX402Request(
+                      walletProvider,
+                      '/api/mesh/register',
+                      {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
-                          txHash,
-                          network: 'base',
-                          from,
-                          to: X402_CONFIG.payTo,
-                          amountMicro: 50_000_000,
-                          category: 'registration',
-                          service: 'Atlas Mesh Service Registration',
-                          metadata: {
-                            serviceName: formData.name,
-                            endpoint: formData.endpoint,
-                            developerAddress: address
-                          }
-                        })
-                      });
-                      console.log('✅ Registration payment tracked:', txHash);
-                    } catch (e) {
-                      console.error('Failed to track registration payment:', e);
+                          name: formData.name,
+                          description: formData.description,
+                          endpoint: formData.endpoint,
+                          developerAddress: address,
+                          category: formData.category,
+                          network: formData.network,
+                          price: {
+                            amount: formData.price.amount,
+                            currency: formData.price.currency,
+                          },
+                        }),
+                      }
+                    );
+
+                    if (!response.ok) {
+                      throw new Error(`Registration failed: ${response.status} ${response.statusText}`);
                     }
-                    
-                    // Wait a moment for transaction to propagate
-                    await new Promise(resolve => setTimeout(resolve, 3000));
-                    
+
+                    const data = await response.json();
+                    console.log('✅ Service registered successfully:', data);
+
+                    // Record user event
+                    if (address) {
+                      try {
+                        await fetch('/api/admin/user-events', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            userAddress: address.toLowerCase(),
+                            eventType: 'service_registered',
+                            network: formData.network,
+                            referenceId: data.serviceId,
+                            amountMicro: 50_000_000,
+                            metadata: {
+                              name: formData.name,
+                              description: formData.description,
+                              endpoint: formData.endpoint,
+                              category: formData.category,
+                              registrationTxHash: data.payment?.transactionHash,
+                            },
+                          }),
+                        });
+                      } catch (error) {
+                        console.error('Failed to log service registration event', error);
+                      }
+                    }
+
                     setIsPaying(false);
-                    handlePaymentComplete();
+                    setShowPaymentModal(false);
+                    
+                    setSubmitResult({
+                      success: true,
+                      message: data.message || 'Service registered successfully!',
+                      serviceId: data.serviceId,
+                    });
+                    
+                    setFormData({
+                      name: '',
+                      description: '',
+                      endpoint: '',
+                      price: { amount: '', currency: 'USDC' },
+                      network: 'base',
+                      category: 'Other',
+                    });
                   } catch (error: any) {
-                    console.error('Payment failed:', error);
+                    console.error('Registration failed:', error);
                     setIsPaying(false);
-                    alert(`Payment failed: ${error.message || 'Unknown error'}`);
+                    alert(`Registration failed: ${error.message || 'Unknown error'}`);
+                    setSubmitResult({
+                      success: false,
+                      message: error.message || 'Registration failed',
+                    });
                   }
                 }}
                 disabled={isPaying || !walletProvider}
                 className="flex-1 px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all font-medium disabled:opacity-50"
               >
-                {isPaying ? 'Processing...' : 'Pay $50 USDC'}
+                {isPaying ? 'Processing...' : 'Pay $50 USDC & Register'}
               </button>
             </div>
 

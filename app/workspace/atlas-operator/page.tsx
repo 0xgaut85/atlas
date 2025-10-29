@@ -8,8 +8,7 @@ import { PaymentGateModal } from '../../components/x402/PaymentGateModal';
 import { PaymentStatusBar } from '../../components/x402/PaymentStatusBar';
 import { hasValidSession } from '@/lib/x402-session';
 import { ManageWallet } from '../../components/ManageWallet';
-import { makeUSDCTransfer } from '@/lib/x402-client';
-import { X402_CONFIG } from '@/lib/x402-config';
+import { makeX402Request } from '@/lib/x402-client';
 import GlitchText from '../../components/motion/GlitchText';
 
 export default function AtlasOperatorPage() {
@@ -120,71 +119,78 @@ export default function AtlasOperatorPage() {
     console.log('Executing payment:', intent);
 
     try {
-      const feeDestination = intent.network === 'base' ? X402_CONFIG.payTo : X402_CONFIG.payToSol;
-      
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: `Processing payment:\n■ Sending $1 USDC fee to protocol...\n■ Sending $${(intent.amountMicro / 1_000_000).toFixed(2)} USDC to ${intent.to}...\n\nPlease confirm both transactions in your wallet.`
+        content: `Processing payment:\n■ Paying $1 USDC operator fee...\n■ Paying $${(intent.amountMicro / 1_000_000).toFixed(2)} USDC for action...\n\nPlease confirm both transactions in your wallet.`
       }]);
 
-      // Step 1: Pay $1 fee to protocol
-      console.log('Step 1: Paying $1 USDC fee...');
-      const feeTxHash = await makeUSDCTransfer(
-        walletProvider,
-        feeDestination,
-        1_000_000, // $1 USDC in micro units
-        intent.network === 'base' ? 'base' : 'solana-mainnet'
-      );
-      console.log('Fee payment tx:', feeTxHash);
-
-      // Step 2: Pay the actual amount to the merchant
-      console.log('Step 2: Paying action amount...');
-      const actionTxHash = await makeUSDCTransfer(
-        walletProvider,
-        intent.to,
-        intent.amountMicro,
-        intent.network === 'base' ? 'base' : 'solana-mainnet'
-      );
-      console.log('Action payment tx:', actionTxHash);
-
-      // Track both payments
+      // Step 1: Pay $1 operator fee via x402-protected endpoint
+      console.log('Step 1: Paying $1 USDC operator fee via x402...');
+      let feeTxHash = 'unknown';
       try {
-        // Track the $1 fee
-        await fetch('/api/admin/payment-tracker', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            txHash: feeTxHash,
-            network: intent.network === 'base' ? 'base' : 'solana-mainnet',
-            from: address,
-            to: feeDestination,
-            amountMicro: 1_000_000,
-            category: 'access',
-            service: 'Atlas Operator Fee',
-            metadata: { operatorAction: true }
-          })
-        });
+        const feeResponse = await makeX402Request(
+          walletProvider,
+          '/api/x402/payment/operator-fee',
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              operatorAction: true,
+              paymentIntent: intent,
+            }),
+          }
+        );
         
-        // Track the action payment
-        await fetch('/api/admin/payment-tracker', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            txHash: actionTxHash,
-            network: intent.network === 'base' ? 'base' : 'solana-mainnet',
-            from: address,
-            to: intent.to,
-            amountMicro: intent.amountMicro,
-            category: 'service',
-            service: intent.description || 'Operator Action',
-            metadata: { operatorAction: true, paymentIntent: intent }
-          })
-        });
-        console.log('✅ Operator payments tracked');
-      } catch (e) {
-        console.error('Failed to track operator payments:', e);
+        if (!feeResponse.ok) {
+          throw new Error(`Operator fee payment failed: ${feeResponse.status}`);
+        }
+        
+        const feeData = await feeResponse.json();
+        feeTxHash = feeData.payment?.transactionHash || 'unknown';
+        console.log('✅ Operator fee paid:', feeTxHash);
+      } catch (feeError: any) {
+        console.error('Operator fee payment error:', feeError);
+        throw new Error(`Failed to pay operator fee: ${feeError.message}`);
       }
 
+      // Step 2: Pay the actual amount via x402-protected service payment endpoint
+      console.log('Step 2: Paying action amount via x402...');
+      let actionTxHash = 'unknown';
+      try {
+        const actionAmount = (intent.amountMicro / 1_000_000).toFixed(2);
+        const actionResponse = await makeX402Request(
+          walletProvider,
+          '/api/x402/payment/service-payment',
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              amount: actionAmount,
+              serviceName: intent.description || 'Operator Action',
+              serviceId: intent.id || intent.to,
+              endpoint: intent.endpoint || null,
+              category: 'service',
+              metadata: {
+                operatorAction: true,
+                paymentIntent: intent,
+              },
+            }),
+          }
+        );
+        
+        if (!actionResponse.ok) {
+          throw new Error(`Action payment failed: ${actionResponse.status}`);
+        }
+        
+        const actionData = await actionResponse.json();
+        actionTxHash = actionData.payment?.transactionHash || 'unknown';
+        console.log('✅ Action payment successful:', actionTxHash);
+      } catch (actionError: any) {
+        console.error('Action payment error:', actionError);
+        throw new Error(`Failed to pay action amount: ${actionError.message}`);
+      }
+
+      // Record user event
       if (address) {
         try {
           await fetch('/api/admin/user-events', {
@@ -193,7 +199,7 @@ export default function AtlasOperatorPage() {
             body: JSON.stringify({
               userAddress: address.toLowerCase(),
               eventType: 'operator_action',
-              network: intent.network,
+              network: intent.network === 'base' ? 'base' : 'solana-mainnet',
               referenceId: intent.id || intent.to,
               amountMicro: intent.amountMicro,
               metadata: {
@@ -212,7 +218,7 @@ export default function AtlasOperatorPage() {
       // Success!
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: `Payment completed successfully!\n\nFee transaction: ${feeTxHash}\nAction transaction: ${actionTxHash}\n\n${intent.memo || 'Transaction complete.'}\n\nDashboards will update in a few moments...`
+        content: `Payment completed successfully!\n\nFee transaction: ${feeTxHash}\nAction transaction: ${actionTxHash}\n\n${intent.memo || 'Transaction complete.'}\n\nBoth payments are tracked on x402scan and dashboards will update in a few moments...`
       }]);
 
       // Wait for settlement and refresh dashboards
