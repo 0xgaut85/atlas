@@ -612,13 +612,27 @@ CRITICAL RESPONSE STYLE:
       // Remove any other potential internal tags
       cleanedText = cleanedText.replace(/<\/?[a-z_]+>/gi, '');
       
-      // Remove reasoning patterns - match sentences that start with "The [tool] tool provides" or similar reasoning statements
+      // Remove reasoning patterns - match paragraphs that analyze tool results
+      // Pattern 1: "The [tool] tool provides..."
       cleanedText = cleanedText.replace(/The\s+\w+\s+tool\s+provides[\s\S]*?(?=\n\n|$)/gi, '');
+      
+      // Pattern 2: "With over X tokens returned..."
       cleanedText = cleanedText.replace(/With\s+over\s+\d+\s+tokens[\s\S]*?(?=\n\n|$)/gi, '');
+      
+      // Pattern 3: "Overall, the results..."
       cleanedText = cleanedText.replace(/Overall[\s\S]*?(?=\n\n|$)/gi, '');
       
-      // Remove any paragraphs that are clearly internal reasoning
-      cleanedText = cleanedText.replace(/This\s+(would be|demonstrates|gives|includes)[\s\S]*?(?=\n\n|$)/gi, '');
+      // Pattern 4: "This would be helpful..." / "This demonstrates..." / "This gives..."
+      cleanedText = cleanedText.replace(/This\s+(would be|demonstrates|gives|includes|provides|shows)[\s\S]*?(?=\n\n|$)/gi, '');
+      
+      // Pattern 5: "The API documentation provided..."
+      cleanedText = cleanedText.replace(/The\s+API\s+documentation[\s\S]*?(?=\n\n|$)/gi, '');
+      
+      // Pattern 6: "The list covers..." / "The results show..."
+      cleanedText = cleanedText.replace(/The\s+(list|results|data)\s+(covers|shows|includes|demonstrates)[\s\S]*?(?=\n\n|$)/gi, '');
+      
+      // Pattern 7: Remove paragraphs that start with summary phrases
+      cleanedText = cleanedText.replace(/^(In summary|To summarize|In conclusion|To conclude|In essence)[\s\S]*?(?=\n\n|$)/gim, '');
       
       // Trim whitespace and clean up multiple newlines
       cleanedText = cleanedText.replace(/\n{3,}/g, '\n\n').trim();
