@@ -132,49 +132,70 @@ export async function listPayments(options: ListPaymentsOptions = {}): Promise<A
 
   if (DB_ENABLED) {
     await ensureDb();
-    const conditions = [] as string[];
-    const values: any[] = [];
+    
+    try {
+      // Build query parts dynamically
+      const parts: string[] = [];
+      const params: any[] = [];
+      let paramIndex = 1;
 
-    if (userAddress) {
-      conditions.push(`user_address = $${conditions.length + 1}`);
-      values.push(userAddress.toLowerCase());
-    }
-    if (network) {
-      conditions.push(`network = $${conditions.length + 1}`);
-      values.push(network);
-    }
-    if (category) {
-      conditions.push(`category = $${conditions.length + 1}`);
-      values.push(category);
-    }
-    if (since) {
-      conditions.push(`created_at >= $${conditions.length + 1}`);
-      values.push(since.toISOString());
-    }
+      if (userAddress) {
+        parts.push(`user_address = $${paramIndex}`);
+        params.push(userAddress.toLowerCase());
+        paramIndex++;
+      }
+      if (network) {
+        parts.push(`network = $${paramIndex}`);
+        params.push(network);
+        paramIndex++;
+      }
+      if (category) {
+        parts.push(`category = $${paramIndex}`);
+        params.push(category);
+        paramIndex++;
+      }
+      if (since) {
+        parts.push(`created_at >= $${paramIndex}`);
+        params.push(since.toISOString());
+        paramIndex++;
+      }
 
-    const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-    const query = `
-      SELECT tx_hash, user_address, merchant_address, network, amount_micro, currency, category, service, metadata, created_at
-      FROM atlas_payments
-      ${whereClause}
-      ORDER BY created_at DESC
-      LIMIT ${limit}
-      OFFSET ${offset}
-    `;
+      const whereClause = parts.length ? `WHERE ${parts.join(' AND ')}` : '';
+      const query = `
+        SELECT tx_hash, user_address, merchant_address, network, amount_micro, currency, category, service, metadata, created_at
+        FROM atlas_payments
+        ${whereClause}
+        ORDER BY created_at DESC
+        LIMIT $${paramIndex}
+        OFFSET $${paramIndex + 1}
+      `;
+      params.push(limit, offset);
 
-    const rows = await sql.query(query, values);
-    return rows.rows.map((row) => ({
-      txHash: row.tx_hash,
-      userAddress: row.user_address ?? undefined,
-      merchantAddress: row.merchant_address ?? undefined,
-      network: row.network,
-      amountMicro: Number(row.amount_micro) || 0,
-      currency: row.currency,
-      category: row.category,
-      service: row.service ?? undefined,
-      metadata: row.metadata ?? undefined,
-      createdAt: new Date(row.created_at),
-    }));
+      console.log('🔍 Executing query:', query);
+      console.log('📋 Parameters:', params);
+
+      // Use sql.unsafe for dynamic queries with parameters
+      const rows = await sql.unsafe(query, params);
+      
+      console.log(`✅ Query returned ${rows.length} rows`);
+      
+      return rows.map((row: any) => ({
+        txHash: row.tx_hash,
+        userAddress: row.user_address ?? undefined,
+        merchantAddress: row.merchant_address ?? undefined,
+        network: row.network,
+        amountMicro: Number(row.amount_micro) || 0,
+        currency: row.currency,
+        category: row.category,
+        service: row.service ?? undefined,
+        metadata: row.metadata ?? undefined,
+        createdAt: new Date(row.created_at),
+      }));
+    } catch (dbError: any) {
+      console.error('❌ Database query error:', dbError.message);
+      console.error('❌ Stack:', dbError.stack);
+      throw dbError;
+    }
   }
 
   const records = Array.from(fallbackStore.payments.values());
@@ -236,39 +257,51 @@ export async function listUserEvents(options: ListUserEventsOptions = {}): Promi
 
   if (DB_ENABLED) {
     await ensureDb();
-    const conditions = [] as string[];
-    const values: any[] = [];
+    
+    try {
+      const parts: string[] = [];
+      const params: any[] = [];
+      let paramIndex = 1;
 
-    if (userAddress) {
-      conditions.push(`user_address = $${conditions.length + 1}`);
-      values.push(userAddress.toLowerCase());
+      if (userAddress) {
+        parts.push(`user_address = $${paramIndex}`);
+        params.push(userAddress.toLowerCase());
+        paramIndex++;
+      }
+      if (eventType) {
+        parts.push(`event_type = $${paramIndex}`);
+        params.push(eventType);
+        paramIndex++;
+      }
+
+      const whereClause = parts.length ? `WHERE ${parts.join(' AND ')}` : '';
+      const query = `
+        SELECT id, user_address, event_type, network, reference_id, amount_micro, metadata, created_at
+        FROM atlas_user_events
+        ${whereClause}
+        ORDER BY created_at DESC
+        LIMIT $${paramIndex}
+        OFFSET $${paramIndex + 1}
+      `;
+      params.push(limit, offset);
+
+      // Use sql.unsafe for dynamic queries
+      const rows = await sql.unsafe(query, params);
+      
+      return rows.map((row: any) => ({
+        id: row.id,
+        userAddress: row.user_address,
+        eventType: row.event_type,
+        network: row.network ?? undefined,
+        referenceId: row.reference_id ?? undefined,
+        amountMicro: row.amount_micro ?? undefined,
+        metadata: row.metadata ?? undefined,
+        createdAt: new Date(row.created_at),
+      }));
+    } catch (dbError: any) {
+      console.error('❌ Database query error for events:', dbError.message);
+      throw dbError;
     }
-    if (eventType) {
-      conditions.push(`event_type = $${conditions.length + 1}`);
-      values.push(eventType);
-    }
-
-    const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-    const query = `
-      SELECT id, user_address, event_type, network, reference_id, amount_micro, metadata, created_at
-      FROM atlas_user_events
-      ${whereClause}
-      ORDER BY created_at DESC
-      LIMIT ${limit}
-      OFFSET ${offset}
-    `;
-
-    const rows = await sql.query(query, values);
-    return rows.rows.map((row) => ({
-      id: row.id,
-      userAddress: row.user_address,
-      eventType: row.event_type,
-      network: row.network ?? undefined,
-      referenceId: row.reference_id ?? undefined,
-      amountMicro: row.amount_micro ?? undefined,
-      metadata: row.metadata ?? undefined,
-      createdAt: new Date(row.created_at),
-    }));
   }
 
   return fallbackStore.events
