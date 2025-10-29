@@ -6,13 +6,20 @@ import Anthropic from '@anthropic-ai/sdk';
 // In production, process.env is populated by Vercel's environment variables
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 
-// Log for debugging (only the presence, not the value)
-if (process.env.VERCEL) {
-  console.log('✅ Running on Vercel - using Vercel environment variables');
-  console.log('ANTHROPIC_API_KEY present:', !!ANTHROPIC_API_KEY);
-} else {
-  console.warn('⚠️ Not running on Vercel - ensure ANTHROPIC_API_KEY is set in Vercel');
-}
+// Detailed logging for debugging (without exposing full key)
+const keyPrefix = ANTHROPIC_API_KEY ? ANTHROPIC_API_KEY.substring(0, 10) + '...' : 'MISSING';
+const keyLength = ANTHROPIC_API_KEY ? ANTHROPIC_API_KEY.length : 0;
+const isValidFormat = ANTHROPIC_API_KEY ? ANTHROPIC_API_KEY.startsWith('sk-ant-') : false;
+
+console.log('🔍 Environment Debug:', {
+  isVercel: !!process.env.VERCEL,
+  hasKey: !!ANTHROPIC_API_KEY,
+  keyPrefix,
+  keyLength,
+  isValidFormat,
+  nodeEnv: process.env.NODE_ENV,
+  allEnvKeys: Object.keys(process.env).filter(k => k.includes('ANTHROPIC')).join(', ')
+});
 
 // Validate that the API key is loaded from Vercel
 if (!ANTHROPIC_API_KEY) {
@@ -20,26 +27,27 @@ if (!ANTHROPIC_API_KEY) {
   console.error('Please check: https://vercel.com/gauthiers-projects-fae77e6c/atlas402/settings/environment-variables');
 }
 
+// Validate API key format
+if (ANTHROPIC_API_KEY && !isValidFormat) {
+  console.error('⚠️ ANTHROPIC_API_KEY format appears invalid - should start with "sk-ant-"');
+  console.error('Key prefix:', keyPrefix);
+}
+
 // Initialize Anthropic client ONLY with Vercel environment variable
 // No fallback, no local file loading - only Vercel env vars
 const anthropic = ANTHROPIC_API_KEY ? new Anthropic({
-  apiKey: ANTHROPIC_API_KEY,
+  apiKey: ANTHROPIC_API_KEY.trim(), // Trim any whitespace that might cause issues
 }) : null;
 
 // Use only claude-3-opus-20240229
 const MODEL_CANDIDATES: string[] = ['claude-3-opus-20240229'];
 
-async function createWithFallback(params: any) {
-  // Ensure anthropic client is initialized from Vercel env vars
-  if (!anthropic) {
-    throw new Error('Anthropic client not initialized - ANTHROPIC_API_KEY missing from Vercel environment variables');
-  }
-
+async function createWithFallback(client: Anthropic, params: any) {
   let lastErr: any = null;
   for (const model of MODEL_CANDIDATES) {
     try {
       console.log(`🤖 Anthropic: trying model ${model}`);
-      const res = await anthropic.messages.create({ ...params, model });
+      const res = await client.messages.create({ ...params, model });
       console.log(`✅ Anthropic: using model ${model}`);
       return res;
     } catch (e: any) {
@@ -174,15 +182,28 @@ async function listTokens(network?: string, category?: string) {
 
 export async function POST(req: NextRequest) {
   try {
+    // Load API key fresh from Vercel environment variables at request time
+    // This ensures we get the latest value even if cached at module load
+    const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
+    
+    console.log('🔍 POST Request Debug:', {
+      hasApiKey: !!apiKey,
+      keyPrefix: apiKey ? apiKey.substring(0, 12) + '...' : 'MISSING',
+      keyLength: apiKey?.length || 0,
+      isValidFormat: apiKey?.startsWith('sk-ant-') || false,
+      isVercel: !!process.env.VERCEL,
+      nodeEnv: process.env.NODE_ENV
+    });
+
     // Verify that Vercel environment variables are loaded
     // IMPORTANT: Only use Vercel environment variables, no local .env files
-    if (!ANTHROPIC_API_KEY || !anthropic) {
+    if (!apiKey) {
       console.error('❌ ANTHROPIC_API_KEY missing - Check Vercel environment variables');
       console.error('Environment check:', {
-        hasKey: !!ANTHROPIC_API_KEY,
-        hasClient: !!anthropic,
+        hasKey: !!apiKey,
         isVercel: !!process.env.VERCEL,
-        nodeEnv: process.env.NODE_ENV
+        nodeEnv: process.env.NODE_ENV,
+        allEnvKeys: Object.keys(process.env).filter(k => k.includes('ANTHROPIC')).join(', ')
       });
       return NextResponse.json({ 
         message: 'Configuration error: Anthropic API key is not configured. The API key must be set in Vercel environment variables (not local .env files). Please check https://vercel.com/gauthiers-projects-fae77e6c/atlas402/settings/environment-variables and ensure ANTHROPIC_API_KEY is set for Production environment.',
@@ -193,6 +214,24 @@ export async function POST(req: NextRequest) {
         }
       }, { status: 500 });
     }
+
+    // Validate API key format
+    if (!apiKey.startsWith('sk-ant-')) {
+      console.error('⚠️ ANTHROPIC_API_KEY format invalid - should start with "sk-ant-"');
+      console.error('Key prefix:', apiKey.substring(0, 15));
+      return NextResponse.json({ 
+        message: 'Configuration error: ANTHROPIC_API_KEY format appears invalid. Key should start with "sk-ant-". Please verify the key in Vercel environment variables.',
+        error: {
+          type: 'configuration_error',
+          message: 'ANTHROPIC_API_KEY format invalid'
+        }
+      }, { status: 500 });
+    }
+
+    // Initialize Anthropic client with fresh API key from Vercel
+    const anthropicClient = new Anthropic({
+      apiKey: apiKey,
+    });
 
     const { messages } = await req.json();
     
@@ -431,11 +470,11 @@ Important: Be conversational, friendly, and natural. You're an AI assistant that
     ];
 
     // Call Claude API with tools
-    console.log('Calling Anthropic API...');
+    console.log('Calling Anthropic API with client from Vercel env vars...');
     let response;
     
     try {
-      response = await createWithFallback({
+      response = await createWithFallback(anthropicClient, {
         max_tokens: 2048,
         system: systemPrompt,
         messages: cleanedMessages,
@@ -518,7 +557,7 @@ Important: Be conversational, friendly, and natural. You're an AI assistant that
         }
       ];
 
-      response = await createWithFallback({
+      response = await createWithFallback(anthropicClient, {
         max_tokens: 2048,
         system: systemPrompt,
         messages: updatedMessages,
@@ -576,7 +615,20 @@ Important: Be conversational, friendly, and natural. You're an AI assistant that
     if (error?.status === 429) {
       errorMsg = 'Rate limit exceeded. Please wait a moment and try again.';
     } else if (error?.status === 401) {
-      errorMsg = 'API authentication failed. The ANTHROPIC_API_KEY environment variable from Vercel is either missing, invalid, or not properly loaded. Please verify the API key is correctly set in Vercel environment variables at https://vercel.com/gauthiers-projects-fae77e6c/atlas402/settings/environment-variables and ensure it is enabled for Production environment.';
+      const keyInfo = apiKey ? {
+        hasKey: true,
+        keyPrefix: apiKey.substring(0, 12) + '...',
+        keyLength: apiKey.length,
+        isValidFormat: apiKey.startsWith('sk-ant-')
+      } : { hasKey: false };
+      
+      console.error('❌ 401 Authentication Error Details:', {
+        ...keyInfo,
+        errorMessage: error?.error?.message || error?.message,
+        requestId: error?.requestID || error?.request_id
+      });
+      
+      errorMsg = `API authentication failed (401). The ANTHROPIC_API_KEY from Vercel appears to be invalid or expired. Key loaded: ${keyInfo.hasKey ? 'Yes' : 'No'}, Format valid: ${keyInfo.isValidFormat || false}. Please verify: 1) The key is correct in Vercel settings, 2) The key hasn't been revoked/expired, 3) The key is enabled for Production environment. Check: https://vercel.com/gauthiers-projects-fae77e6c/atlas402/settings/environment-variables`;
     } else if (error?.status === 400) {
       errorMsg = 'Invalid request. Please try rephrasing your message.';
     }
