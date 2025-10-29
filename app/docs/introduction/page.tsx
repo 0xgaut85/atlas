@@ -44,13 +44,35 @@ const coreIdeas = [
   {
     id: '3',
     number: 3,
-    title: 'Risk-Free Testing',
+    title: 'Six Integrated Utilities',
     content: (
       <div>
-        <p className="mb-4">Explore and test any service before spending a single token. Validate integration before commitment with built-in testing interfaces.</p>
-        <div className="flex items-center gap-2 text-sm text-gray-600">
-          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-          <span>Free trial periods available</span>
+        <p className="mb-4">Atlas402 provides a complete ecosystem of tools for building, managing, and monetizing x402 services:</p>
+        <div className="space-y-2 text-sm text-gray-600">
+          <div className="flex items-center gap-2">
+            <span className="font-medium text-black">Atlas Dashboard</span>
+            <span>- Personal analytics and activity tracking</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="font-medium text-black">Atlas x402</span>
+            <span>- Protocol-wide revenue and metrics</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="font-medium text-black">Atlas Foundry</span>
+            <span>- Create and mint x402-native tokens</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="font-medium text-black">Atlas Index</span>
+            <span>- Discover and test x402 services</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="font-medium text-black">Atlas Mesh</span>
+            <span>- Register and configure your services</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="font-medium text-black">Atlas Operator</span>
+            <span>- AI-powered automation and workflows</span>
+          </div>
         </div>
       </div>
     )
@@ -78,51 +100,62 @@ const usageSteps = [
   {
     id: 'explore',
     number: 1,
-    title: 'Explore Marketplace',
+    title: 'Access Workspace Utilities',
     content: (
       <div>
-        <p className="mb-4">Discover AI services, data APIs, image processing, and specialized tools across categories. All services support instant x402 payment integration.</p>
+        <p className="mb-4">All six Atlas402 utilities require a $1.00 USDC access fee for one hour of usage. Connect your wallet and pay once to access any utility.</p>
+        <div className="bg-gray-50 p-4 border-2 border-dashed border-gray-300 mb-4">
+          <div className="text-sm text-gray-700 space-y-1">
+            <div>Access Fee: $1.00 USDC per utility</div>
+            <div>Session Duration: 1 hour</div>
+            <div>Supported Networks: Base, Solana</div>
+          </div>
+        </div>
         <a href="/workspace" className="text-red-500 font-medium hover:text-red-600 transition-colors">
+          Access Workspace →
+        </a>
+      </div>
+    )
+  },
+  {
+    id: 'discover',
+    number: 2,
+    title: 'Discover Services',
+    content: (
+      <div>
+        <p className="mb-4">Use Atlas Index to browse and test x402 services. Filter by category, network, and price. Each service requires payment per request.</p>
+        <a href="/workspace/atlas-index" className="text-red-500 font-medium hover:text-red-600 transition-colors">
           Browse Services →
         </a>
       </div>
     )
   },
   {
-    id: 'validate',
-    number: 2,
-    title: 'Validate Functionality',
-    content: (
-      <div>
-        <p className="mb-4">Use built-in testing interfaces to verify service behavior without payment. Test integration patterns before committing funds.</p>
-        <a href="/docs/quickstart" className="text-red-500 font-medium hover:text-red-600 transition-colors">
-          Learn More →
-        </a>
-      </div>
-    )
-  },
-  {
-    id: 'connect',
+    id: 'create',
     number: 3,
-    title: 'Connect Wallet',
+    title: 'Create Tokens or Register Services',
     content: (
       <div>
-        <p className="mb-4">Link MetaMask, Phantom, or any supported wallet to enable transactions. Multi-chain support for seamless cross-platform usage.</p>
-        <a href="/docs/clients" className="text-red-500 font-medium hover:text-red-600 transition-colors">
-          Wallet Setup →
-        </a>
+        <p className="mb-4">Create tokens in Atlas Foundry ($10 deployment fee) or register services in Atlas Mesh ($50 registration fee). Both provide instant x402 integration.</p>
+        <div className="bg-gray-50 p-4 border-2 border-dashed border-gray-300 mb-4">
+          <div className="text-sm text-gray-700 space-y-1">
+            <div>Token Creation: $10 USDC deployment fee</div>
+            <div>Service Registration: $50 USDC registration fee</div>
+            <div>Access Fee: $1.00 USDC per utility</div>
+          </div>
+        </div>
       </div>
     )
   },
   {
-    id: 'integrate',
+    id: 'monitor',
     number: 4,
-    title: 'Integrate & Deploy',
+    title: 'Monitor Activity',
     content: (
       <div>
-        <p className="mb-4">Generate production-ready integration code, embed in your application, and start transacting. Deploy in minutes, not days.</p>
-        <a href="/docs/examples" className="text-red-500 font-medium hover:text-red-600 transition-colors">
-          Integration Guide →
+        <p className="mb-4">Track your payments, mints, and services in Atlas Dashboard. View protocol-wide metrics in Atlas x402. Export data for analysis.</p>
+        <a href="/workspace/atlas-dashboard" className="text-red-500 font-medium hover:text-red-600 transition-colors">
+          View Dashboard →
         </a>
       </div>
     )
@@ -180,11 +213,14 @@ export default function IntroductionPage() {
               Platform Overview
             </h2>
             <p className="text-lg text-gray-600 leading-relaxed mb-6">
-              Atlas402 is a marketplace where services are discovered, tested, and monetized through the HTTP 402 payment protocol. Every API request is a micropayment transaction settling instantly on-chain.
+              Atlas402 is a comprehensive platform for the x402 payment protocol ecosystem. It provides six integrated utilities for discovering, creating, managing, and monetizing x402-enabled services. Every API request becomes a micropayment transaction settling instantly on-chain across Base and Solana networks.
             </p>
-            <div className="bg-red-50 border-2 border-dashed border-red-200 p-4">
-              <p className="text-sm text-red-700 font-medium">
+            <div className="bg-red-50 border-2 border-dashed border-red-200 p-4 mb-4">
+              <p className="text-sm text-red-700 font-medium mb-2">
                 Transform every API call into an instant micropayment
+              </p>
+              <p className="text-xs text-red-600">
+                Platform fee: $0 - developers keep 100% of revenue
               </p>
             </div>
           </div>
