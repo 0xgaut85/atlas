@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyX402Payment, create402Response } from '../middleware';
+import { verifyX402Payment, create402Response } from '../../middleware';
 import { recordPayment } from '@/lib/atlas-tracking';
 import { X402_CONFIG } from '@/lib/x402-config';
 
