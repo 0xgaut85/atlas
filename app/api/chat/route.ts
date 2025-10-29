@@ -1,9 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 
-// Load environment variables from Vercel
-// Vercel automatically injects environment variables into process.env
+// IMPORTANT: Load ONLY from Vercel environment variables
+// Do NOT use local .env files - Vercel injects variables at runtime
+// In production, process.env is populated by Vercel's environment variables
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
+
+// Log for debugging (only the presence, not the value)
+if (process.env.VERCEL) {
+  console.log('✅ Running on Vercel - using Vercel environment variables');
+  console.log('ANTHROPIC_API_KEY present:', !!ANTHROPIC_API_KEY);
+} else {
+  console.warn('⚠️ Not running on Vercel - ensure ANTHROPIC_API_KEY is set in Vercel');
+}
 
 // Validate that the API key is loaded from Vercel
 if (!ANTHROPIC_API_KEY) {
@@ -11,14 +20,21 @@ if (!ANTHROPIC_API_KEY) {
   console.error('Please check: https://vercel.com/gauthiers-projects-fae77e6c/atlas402/settings/environment-variables');
 }
 
-const anthropic = new Anthropic({
-  apiKey: ANTHROPIC_API_KEY || '',
-});
+// Initialize Anthropic client ONLY with Vercel environment variable
+// No fallback, no local file loading - only Vercel env vars
+const anthropic = ANTHROPIC_API_KEY ? new Anthropic({
+  apiKey: ANTHROPIC_API_KEY,
+}) : null;
 
 // Use only claude-3-opus-20240229
 const MODEL_CANDIDATES: string[] = ['claude-3-opus-20240229'];
 
 async function createWithFallback(params: any) {
+  // Ensure anthropic client is initialized from Vercel env vars
+  if (!anthropic) {
+    throw new Error('Anthropic client not initialized - ANTHROPIC_API_KEY missing from Vercel environment variables');
+  }
+
   let lastErr: any = null;
   for (const model of MODEL_CANDIDATES) {
     try {
@@ -159,13 +175,21 @@ async function listTokens(network?: string, category?: string) {
 export async function POST(req: NextRequest) {
   try {
     // Verify that Vercel environment variables are loaded
-    if (!ANTHROPIC_API_KEY) {
+    // IMPORTANT: Only use Vercel environment variables, no local .env files
+    if (!ANTHROPIC_API_KEY || !anthropic) {
       console.error('❌ ANTHROPIC_API_KEY missing - Check Vercel environment variables');
+      console.error('Environment check:', {
+        hasKey: !!ANTHROPIC_API_KEY,
+        hasClient: !!anthropic,
+        isVercel: !!process.env.VERCEL,
+        nodeEnv: process.env.NODE_ENV
+      });
       return NextResponse.json({ 
-        message: 'Configuration error: Anthropic API key is not configured. Please check Vercel environment variables at https://vercel.com/gauthiers-projects-fae77e6c/atlas402/settings/environment-variables',
+        message: 'Configuration error: Anthropic API key is not configured. The API key must be set in Vercel environment variables (not local .env files). Please check https://vercel.com/gauthiers-projects-fae77e6c/atlas402/settings/environment-variables and ensure ANTHROPIC_API_KEY is set for Production environment.',
         error: {
           type: 'configuration_error',
-          message: 'ANTHROPIC_API_KEY environment variable is not set in Vercel'
+          message: 'ANTHROPIC_API_KEY environment variable is not set in Vercel',
+          details: 'Only Vercel environment variables are used - local .env files are ignored'
         }
       }, { status: 500 });
     }
