@@ -134,50 +134,141 @@ export async function listPayments(options: ListPaymentsOptions = {}): Promise<A
     await ensureDb();
     
     try {
-      // Build query parts dynamically
-      const parts: string[] = [];
-      const params: any[] = [];
-      let paramIndex = 1;
-
-      if (userAddress) {
-        parts.push(`user_address = $${paramIndex}`);
-        params.push(userAddress.toLowerCase());
-        paramIndex++;
+      // Build query using sql template literals conditionally
+      // This ensures proper parameterization and prevents SQL injection
+      let query;
+      
+      if (userAddress && network && category && since) {
+        query = sql`
+          SELECT tx_hash, user_address, merchant_address, network, amount_micro, currency, category, service, metadata, created_at
+          FROM atlas_payments
+          WHERE user_address = ${userAddress.toLowerCase()} 
+            AND network = ${network} 
+            AND category = ${category}
+            AND created_at >= ${since.toISOString()}
+          ORDER BY created_at DESC
+          LIMIT ${limit}
+          OFFSET ${offset}
+        `;
+      } else if (userAddress && network && category) {
+        query = sql`
+          SELECT tx_hash, user_address, merchant_address, network, amount_micro, currency, category, service, metadata, created_at
+          FROM atlas_payments
+          WHERE user_address = ${userAddress.toLowerCase()} 
+            AND network = ${network} 
+            AND category = ${category}
+          ORDER BY created_at DESC
+          LIMIT ${limit}
+          OFFSET ${offset}
+        `;
+      } else if (userAddress && network && since) {
+        query = sql`
+          SELECT tx_hash, user_address, merchant_address, network, amount_micro, currency, category, service, metadata, created_at
+          FROM atlas_payments
+          WHERE user_address = ${userAddress.toLowerCase()} 
+            AND network = ${network}
+            AND created_at >= ${since.toISOString()}
+          ORDER BY created_at DESC
+          LIMIT ${limit}
+          OFFSET ${offset}
+        `;
+      } else if (userAddress && network) {
+        query = sql`
+          SELECT tx_hash, user_address, merchant_address, network, amount_micro, currency, category, service, metadata, created_at
+          FROM atlas_payments
+          WHERE user_address = ${userAddress.toLowerCase()} 
+            AND network = ${network}
+          ORDER BY created_at DESC
+          LIMIT ${limit}
+          OFFSET ${offset}
+        `;
+      } else if (userAddress && category) {
+        query = sql`
+          SELECT tx_hash, user_address, merchant_address, network, amount_micro, currency, category, service, metadata, created_at
+          FROM atlas_payments
+          WHERE user_address = ${userAddress.toLowerCase()} 
+            AND category = ${category}
+          ORDER BY created_at DESC
+          LIMIT ${limit}
+          OFFSET ${offset}
+        `;
+      } else if (userAddress && since) {
+        query = sql`
+          SELECT tx_hash, user_address, merchant_address, network, amount_micro, currency, category, service, metadata, created_at
+          FROM atlas_payments
+          WHERE user_address = ${userAddress.toLowerCase()}
+            AND created_at >= ${since.toISOString()}
+          ORDER BY created_at DESC
+          LIMIT ${limit}
+          OFFSET ${offset}
+        `;
+      } else if (userAddress) {
+        query = sql`
+          SELECT tx_hash, user_address, merchant_address, network, amount_micro, currency, category, service, metadata, created_at
+          FROM atlas_payments
+          WHERE user_address = ${userAddress.toLowerCase()}
+          ORDER BY created_at DESC
+          LIMIT ${limit}
+          OFFSET ${offset}
+        `;
+      } else if (network && category) {
+        query = sql`
+          SELECT tx_hash, user_address, merchant_address, network, amount_micro, currency, category, service, metadata, created_at
+          FROM atlas_payments
+          WHERE network = ${network} 
+            AND category = ${category}
+          ORDER BY created_at DESC
+          LIMIT ${limit}
+          OFFSET ${offset}
+        `;
+      } else if (network) {
+        query = sql`
+          SELECT tx_hash, user_address, merchant_address, network, amount_micro, currency, category, service, metadata, created_at
+          FROM atlas_payments
+          WHERE network = ${network}
+          ORDER BY created_at DESC
+          LIMIT ${limit}
+          OFFSET ${offset}
+        `;
+      } else if (category) {
+        query = sql`
+          SELECT tx_hash, user_address, merchant_address, network, amount_micro, currency, category, service, metadata, created_at
+          FROM atlas_payments
+          WHERE category = ${category}
+          ORDER BY created_at DESC
+          LIMIT ${limit}
+          OFFSET ${offset}
+        `;
+      } else if (since) {
+        query = sql`
+          SELECT tx_hash, user_address, merchant_address, network, amount_micro, currency, category, service, metadata, created_at
+          FROM atlas_payments
+          WHERE created_at >= ${since.toISOString()}
+          ORDER BY created_at DESC
+          LIMIT ${limit}
+          OFFSET ${offset}
+        `;
+      } else {
+        query = sql`
+          SELECT tx_hash, user_address, merchant_address, network, amount_micro, currency, category, service, metadata, created_at
+          FROM atlas_payments
+          ORDER BY created_at DESC
+          LIMIT ${limit}
+          OFFSET ${offset}
+        `;
       }
-      if (network) {
-        parts.push(`network = $${paramIndex}`);
-        params.push(network);
-        paramIndex++;
-      }
-      if (category) {
-        parts.push(`category = $${paramIndex}`);
-        params.push(category);
-        paramIndex++;
-      }
-      if (since) {
-        parts.push(`created_at >= $${paramIndex}`);
-        params.push(since.toISOString());
-        paramIndex++;
-      }
 
-      const whereClause = parts.length ? `WHERE ${parts.join(' AND ')}` : '';
-      const query = `
-        SELECT tx_hash, user_address, merchant_address, network, amount_micro, currency, category, service, metadata, created_at
-        FROM atlas_payments
-        ${whereClause}
-        ORDER BY created_at DESC
-        LIMIT $${paramIndex}
-        OFFSET $${paramIndex + 1}
-      `;
-      params.push(limit, offset);
-
-      console.log('🔍 Executing query:', query);
-      console.log('📋 Parameters:', params);
-
-      // Use sql.unsafe for dynamic queries with parameters
-      const rows = await sql.unsafe(query, params);
+      console.log('🔍 Fetching payments with filters:', { userAddress, network, category, since, limit, offset });
+      const rows = await query;
       
       console.log(`✅ Query returned ${rows.length} rows`);
+      if (rows.length > 0) {
+        console.log('📋 Sample payment:', {
+          txHash: rows[0].tx_hash,
+          userAddress: rows[0].user_address,
+          category: rows[0].category,
+        });
+      }
       
       return rows.map((row: any) => ({
         txHash: row.tx_hash,
@@ -259,34 +350,47 @@ export async function listUserEvents(options: ListUserEventsOptions = {}): Promi
     await ensureDb();
     
     try {
-      const parts: string[] = [];
-      const params: any[] = [];
-      let paramIndex = 1;
-
-      if (userAddress) {
-        parts.push(`user_address = $${paramIndex}`);
-        params.push(userAddress.toLowerCase());
-        paramIndex++;
+      let query;
+      
+      if (userAddress && eventType) {
+        query = sql`
+          SELECT id, user_address, event_type, network, reference_id, amount_micro, metadata, created_at
+          FROM atlas_user_events
+          WHERE user_address = ${userAddress.toLowerCase()} 
+            AND event_type = ${eventType}
+          ORDER BY created_at DESC
+          LIMIT ${limit}
+          OFFSET ${offset}
+        `;
+      } else if (userAddress) {
+        query = sql`
+          SELECT id, user_address, event_type, network, reference_id, amount_micro, metadata, created_at
+          FROM atlas_user_events
+          WHERE user_address = ${userAddress.toLowerCase()}
+          ORDER BY created_at DESC
+          LIMIT ${limit}
+          OFFSET ${offset}
+        `;
+      } else if (eventType) {
+        query = sql`
+          SELECT id, user_address, event_type, network, reference_id, amount_micro, metadata, created_at
+          FROM atlas_user_events
+          WHERE event_type = ${eventType}
+          ORDER BY created_at DESC
+          LIMIT ${limit}
+          OFFSET ${offset}
+        `;
+      } else {
+        query = sql`
+          SELECT id, user_address, event_type, network, reference_id, amount_micro, metadata, created_at
+          FROM atlas_user_events
+          ORDER BY created_at DESC
+          LIMIT ${limit}
+          OFFSET ${offset}
+        `;
       }
-      if (eventType) {
-        parts.push(`event_type = $${paramIndex}`);
-        params.push(eventType);
-        paramIndex++;
-      }
 
-      const whereClause = parts.length ? `WHERE ${parts.join(' AND ')}` : '';
-      const query = `
-        SELECT id, user_address, event_type, network, reference_id, amount_micro, metadata, created_at
-        FROM atlas_user_events
-        ${whereClause}
-        ORDER BY created_at DESC
-        LIMIT $${paramIndex}
-        OFFSET $${paramIndex + 1}
-      `;
-      params.push(limit, offset);
-
-      // Use sql.unsafe for dynamic queries
-      const rows = await sql.unsafe(query, params);
+      const rows = await query;
       
       return rows.map((row: any) => ({
         id: row.id,
