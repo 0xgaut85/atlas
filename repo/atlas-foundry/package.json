@@ -1,0 +1,44 @@
+{
+  "name": "@atlas402/foundry",
+  "version": "1.0.0",
+  "description": "Token creation and minting infrastructure for x402-native assets",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest",
+    "lint": "eslint src --ext .ts",
+    "test:python": "pytest python/"
+  },
+  "keywords": [
+    "x402",
+    "token",
+    "erc20",
+    "spl",
+    "blockchain",
+    "micropayments"
+  ],
+  "author": "Atlas402 Team",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "viem": "^2.0.0",
+    "@solana/web3.js": "^1.87.0",
+    "@solana/spl-token": "^0.4.0",
+    "next": "^14.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.7.0",
+    "vitest": "^1.0.0",
+    "eslint": "^8.0.0"
+  },
+  "python": {
+    "requires": [
+      "requests>=2.31.0",
+      "solana>=0.30.0",
+      "solders>=0.18.0",
+      "pytest>=7.4.0"
+    ]
+  }
+}

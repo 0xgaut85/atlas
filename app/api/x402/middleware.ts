@@ -125,76 +125,76 @@ async function verifyOnChainFallback(
   network: string,
   expectedRecipient: string
 ): Promise<PaymentVerification> {
-  if (network === 'base') {
-    try {
-      // Use public Base RPC to verify the transaction
-      const rpcUrl = 'https://mainnet.base.org';
-      const txResponse = await fetch(rpcUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          method: 'eth_getTransactionByHash',
-          params: [payment.transactionHash],
-          id: 1,
-        }),
-      });
+      if (network === 'base') {
+        try {
+          // Use public Base RPC to verify the transaction
+          const rpcUrl = 'https://mainnet.base.org';
+          const txResponse = await fetch(rpcUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              jsonrpc: '2.0',
+              method: 'eth_getTransactionByHash',
+              params: [payment.transactionHash],
+              id: 1,
+            }),
+          });
 
-      const txData = await txResponse.json();
-      
-      if (txData.result) {
-        const tx = txData.result;
-        const usdcContract = TOKENS.usdcEvm.toLowerCase();
-        
-        if (tx.to && tx.to.toLowerCase() === usdcContract) {
-          // Decode the transfer data to verify recipient
-          if (tx.input && tx.input.startsWith('0xa9059cbb')) {
-            const recipientFromTx = '0x' + tx.input.slice(34, 74);
+          const txData = await txResponse.json();
+          
+          if (txData.result) {
+            const tx = txData.result;
+            const usdcContract = TOKENS.usdcEvm.toLowerCase();
             
-            if (recipientFromTx.toLowerCase() === expectedRecipient.toLowerCase()) {
+            if (tx.to && tx.to.toLowerCase() === usdcContract) {
+          // Decode the transfer data to verify recipient
+              if (tx.input && tx.input.startsWith('0xa9059cbb')) {
+                const recipientFromTx = '0x' + tx.input.slice(34, 74);
+                
+                if (recipientFromTx.toLowerCase() === expectedRecipient.toLowerCase()) {
               console.log('✅ Payment verified via on-chain fallback');
-              return {
-                valid: true,
-                payment: {
-                  transactionHash: payment.transactionHash,
-                  network: payment.network,
-                  amount: payment.amount,
-                  from: tx.from,
-                  to: expectedRecipient,
-                  verified: true,
-                  fallback: true,
-                },
-              };
-            }
+                  return {
+                    valid: true,
+                    payment: {
+                      transactionHash: payment.transactionHash,
+                      network: payment.network,
+                      amount: payment.amount,
+                      from: tx.from,
+                      to: expectedRecipient,
+                verified: true,
+                fallback: true,
+              },
+            };
+          }
           }
         }
       }
     } catch (onChainError: any) {
       console.error('On-chain fallback error:', onChainError);
-    }
-  }
+        }
+      }
 
   // For Solana: accept transaction signature if it looks valid
-  if (network === 'solana-mainnet' || network === 'solana-devnet') {
+      if (network === 'solana-mainnet' || network === 'solana-devnet') {
     if (payment.transactionHash && payment.transactionHash.length > 80) {
       console.log('✅ Accepting Solana payment (fallback)');
-      return {
-        valid: true,
-        payment: {
-          signature: payment.transactionHash,
-          network: payment.network,
-          amount: payment.amount,
-          verified: true,
+        return {
+          valid: true,
+          payment: {
+            signature: payment.transactionHash,
+            network: payment.network,
+            amount: payment.amount,
+            verified: true,
           fallback: true,
-        },
-      };
+          },
+        };
+      }
     }
-  }
 
-  return {
-    valid: false,
+    return {
+      valid: false,
     error: 'Payment verification failed - unable to verify transaction',
-  };
+    };
 }
 
 /**

@@ -5,35 +5,39 @@ import { usePathname } from 'next/navigation';
 
 const docSections = [
   {
-    title: 'Getting Started',
+    title: 'Platform',
     items: [
-      { label: 'Introduction', href: '/docs' },
-      { label: 'What is x402?', href: '/docs/x402-protocol' },
-      { label: 'Quick Start', href: '/docs/quickstart' },
+      { label: 'Overview', href: '/docs' },
+      { label: 'Utilities', href: '/docs/utilities' },
+      { label: 'Fee Structure', href: '/docs/fees' },
     ]
   },
   {
-    title: 'Building Services',
+    title: 'Utilities',
     items: [
-      { label: 'Express.js Server', href: '/docs/server-express' },
-      { label: 'Python Server', href: '/docs/server-python' },
-      { label: 'Echo Merchant', href: '/docs/echo-merchant' },
+      { label: 'Atlas Dashboard', href: '/docs/utilities/dashboard' },
+      { label: 'Atlas x402', href: '/docs/utilities/x402' },
+      { label: 'Atlas Foundry', href: '/docs/utilities/foundry' },
+      { label: 'Atlas Index', href: '/docs/utilities/index' },
+      { label: 'Atlas Mesh', href: '/docs/utilities/mesh' },
+      { label: 'Atlas Operator', href: '/docs/utilities/operator' },
     ]
   },
   {
-    title: 'Client Integration',
+    title: 'Integration',
     items: [
-      { label: 'Client Libraries', href: '/docs/clients' },
-      { label: 'Payment Flow', href: '/docs/payment-flow' },
-      { label: 'Code Examples', href: '/docs/examples' },
+      { label: 'x402 Protocol', href: '/docs/integration/protocol' },
+      { label: 'Server Setup', href: '/docs/integration/server' },
+      { label: 'Client Integration', href: '/docs/integration/client' },
+      { label: 'Payment Flow', href: '/docs/integration/payment-flow' },
     ]
   },
   {
-    title: 'Advanced',
+    title: 'Reference',
     items: [
-      { label: 'Facilitators', href: '/docs/facilitators' },
-      { label: 'API Reference', href: '/docs/api-reference' },
-      { label: 'Deployment', href: '/docs/deployment' },
+      { label: 'API Reference', href: '/docs/reference/api' },
+      { label: 'Facilitators', href: '/docs/reference/facilitators' },
+      { label: 'Network Support', href: '/docs/reference/networks' },
     ]
   }
 ];
@@ -94,6 +98,26 @@ export default function DocsSidebar({ sidebarOpen, setSidebarOpen }: DocsSidebar
                   className="block px-3 py-3 text-sm text-black hover:bg-gray-50 border-2 border-dashed border-black transition-all min-h-[44px] flex items-center"
                 >
                   PayAI Docs
+                </a>
+              </li>
+              <li>
+                <a
+                  href="https://x402.gitbook.io/x402"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block px-3 py-3 text-sm text-black hover:bg-gray-50 border-2 border-dashed border-black transition-all min-h-[44px] flex items-center"
+                >
+                  x402 Protocol
+                </a>
+              </li>
+              <li>
+                <a
+                  href="https://docs.cdp.coinbase.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block px-3 py-3 text-sm text-black hover:bg-gray-50 border-2 border-dashed border-black transition-all min-h-[44px] flex items-center"
+                >
+                  Coinbase CDP
                 </a>
               </li>
               <li>

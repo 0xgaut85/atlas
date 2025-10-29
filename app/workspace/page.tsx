@@ -122,13 +122,13 @@ export default function WorkspacePage() {
           >
             <div className="flex items-center gap-4 mb-6">
               <div className="w-1 h-20 md:h-24 bg-red-600"></div>
-              <div>
+            <div>
                 <h1 className="text-[clamp(3rem,8vw,8rem)] font-bold leading-[0.9] text-black mb-4 font-title tracking-tight">
                   <GlitchText text="Atlas" delay={300} replayOnView inViewThreshold={0.6} />{' '}
                   <span className="text-red-600">
                     <GlitchText text="Workspace" delay={600} replayOnView inViewThreshold={0.6} />
                   </span>
-                </h1>
+              </h1>
                 <motion.p
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -149,30 +149,30 @@ export default function WorkspacePage() {
           transition={{ duration: 0.7, delay: 0.4 }}
           className="mb-16"
         >
-          {!isConnected ? (
+        {!isConnected ? (
             <div className="p-8 md:p-10 border-2 border-dashed border-red-600 bg-white relative">
               <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
-                <div>
+              <div>
                   <h3 className="text-2xl font-bold text-black mb-2 font-title">Connect Wallet</h3>
                   <p className="text-gray-600 font-light">Unlock x402-gated features and services</p>
-                </div>
+              </div>
                 <MagneticButton>
-                  <button
-                    onClick={connectWallet}
+              <button
+                onClick={connectWallet}
                     className="group inline-flex items-center justify-center gap-3 px-8 py-4 bg-red-600 text-white font-medium transition-all duration-300 hover:bg-red-700 text-lg border-2 border-black"
-                  >
+              >
                     <span>Connect Now</span>
                     <svg className="w-5 h-5 transition-transform duration-300 group-hover:translate-x-1 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                     </svg>
-                  </button>
+              </button>
                 </MagneticButton>
-              </div>
             </div>
-          ) : (
+          </div>
+        ) : (
             <div className="p-8 md:p-10 border-2 border-dashed border-black bg-white relative">
               <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
-                <div>
+              <div>
                   <div className="flex items-center gap-3 mb-2">
                     <div className="w-2 h-2 bg-red-600 rounded-full"></div>
                     <h3 className="text-2xl font-bold text-black font-title">Connected</h3>
@@ -180,16 +180,16 @@ export default function WorkspacePage() {
                   <p className="text-gray-600 font-mono font-light">{formatAddress(address!)}</p>
                 </div>
                 <MagneticButton>
-                  <button
-                    onClick={() => disconnect()}
+              <button
+                onClick={() => disconnect()}
                     className="px-6 py-3 bg-white text-black font-medium border-2 border-black transition-all duration-300 hover:bg-black hover:text-white"
-                  >
-                    Disconnect
-                  </button>
+              >
+                Disconnect
+              </button>
                 </MagneticButton>
-              </div>
             </div>
-          )}
+          </div>
+        )}
         </motion.div>
         
         {/* Category-based Layout with Premium Design */}
@@ -216,8 +216,8 @@ export default function WorkspacePage() {
               <div className="grid md:grid-cols-2 gap-6 md:gap-8">
                 {categoryUtils.map((utility, index) => (
                   <HoverRevealCard key={index} delay={index * 0.1}>
-                    <button
-                      onClick={() => router.push(utility.href)}
+                  <button
+                    onClick={() => router.push(utility.href)}
                       className="group w-full text-left"
                     >
                       <div className="bg-white p-8 md:p-10 border-2 border-dashed border-black h-full relative transition-all duration-300 hover:border-red-600">
@@ -228,37 +228,37 @@ export default function WorkspacePage() {
                           </span>
                         </div>
 
-                        {/* Status */}
-                        <div className="flex items-end justify-end mb-4">
-                          <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 bg-red-600 rounded-full"></div>
-                            <span className="text-red-600 text-xs font-medium uppercase tracking-wider">
-                              {utility.status}
-                            </span>
-                          </div>
+                      {/* Status */}
+                      <div className="flex items-end justify-end mb-4">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 bg-red-600 rounded-full"></div>
+                          <span className="text-red-600 text-xs font-medium uppercase tracking-wider">
+                            {utility.status}
+                          </span>
                         </div>
-                        
-                        {/* Title */}
+                      </div>
+                      
+                      {/* Title */}
                         <h3 className="text-2xl md:text-3xl font-bold text-black mb-4 group-hover:text-red-600 transition-colors font-title">
-                          {utility.name}
-                        </h3>
-                        
-                        {/* Description */}
+                        {utility.name}
+                      </h3>
+                      
+                      {/* Description */}
                         <p className="text-gray-700 font-light leading-relaxed mb-8 text-sm md:text-base">
-                          {utility.description}
-                        </p>
-                        
+                        {utility.description}
+                      </p>
+                      
                         {/* Launch CTA */}
-                        <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between">
                           <div className="text-red-600 text-sm font-medium uppercase tracking-wider font-title">
                             Launch
                           </div>
-                          <svg className="w-5 h-5 text-red-600 transition-transform duration-300 group-hover:translate-x-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                          </svg>
-                        </div>
+                        <svg className="w-5 h-5 text-red-600 transition-transform duration-300 group-hover:translate-x-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                        </svg>
                       </div>
-                    </button>
+                    </div>
+                  </button>
                   </HoverRevealCard>
                 ))}
               </div>
@@ -279,39 +279,39 @@ export default function WorkspacePage() {
           </h2>
           <div className="grid sm:grid-cols-3 gap-6 md:gap-8">
             <HoverRevealCard delay={0.1}>
-              <Link
-                href="/docs"
+            <Link
+              href="/docs"
                 className="block p-8 md:p-10 bg-white border-2 border-dashed border-black h-full group transition-all duration-300 hover:border-red-600"
-              >
+            >
                 <h3 className="text-xl md:text-2xl font-bold text-black mb-3 group-hover:text-red-600 transition-colors font-title">
                   Documentation
                 </h3>
                 <p className="text-gray-700 font-light leading-relaxed">Learn how to integrate x402</p>
-              </Link>
+            </Link>
             </HoverRevealCard>
             <HoverRevealCard delay={0.2}>
-              <Link
-                href="/docs/api-reference"
+            <Link
+              href="/docs/api-reference"
                 className="block p-8 md:p-10 bg-white border-2 border-dashed border-black h-full group transition-all duration-300 hover:border-red-600"
-              >
+            >
                 <h3 className="text-xl md:text-2xl font-bold text-black mb-3 group-hover:text-red-600 transition-colors font-title">
                   API Reference
                 </h3>
                 <p className="text-gray-700 font-light leading-relaxed">Complete API documentation</p>
-              </Link>
+            </Link>
             </HoverRevealCard>
             <HoverRevealCard delay={0.3}>
-              <a
-                href="https://github.com/atlas402"
-                target="_blank"
-                rel="noopener noreferrer"
+            <a
+              href="https://github.com/atlas402"
+              target="_blank"
+              rel="noopener noreferrer"
                 className="block p-8 md:p-10 bg-white border-2 border-dashed border-black h-full group transition-all duration-300 hover:border-red-600"
-              >
+            >
                 <h3 className="text-xl md:text-2xl font-bold text-black mb-3 group-hover:text-red-600 transition-colors font-title">
                   GitHub
                 </h3>
                 <p className="text-gray-700 font-light leading-relaxed">Explore open-source code</p>
-              </a>
+            </a>
             </HoverRevealCard>
           </div>
         </motion.div>
@@ -340,11 +340,11 @@ export default function WorkspacePage() {
               <div className="p-8 md:p-10 bg-white border-2 border-dashed border-black text-center">
                 <div className="text-4xl md:text-5xl font-bold text-red-600 mb-2 font-title">
                   {stat.value}
-                </div>
+          </div>
                 <div className="text-xs md:text-sm text-gray-600 uppercase tracking-wider font-light">
                   {stat.label}
-                </div>
-              </div>
+          </div>
+        </div>
             </motion.div>
           ))}
         </motion.div>

@@ -1,0 +1,30 @@
+{
+  "name": "@atlas402/x402-client",
+  "version": "1.0.0",
+  "description": "Client-side x402 payment integration",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "viem": "^2.0.0",
+    "@solana/web3.js": "^1.87.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.7.0",
+    "vitest": "^1.0.0"
+  },
+  "keywords": [
+    "x402",
+    "http402",
+    "payments",
+    "blockchain",
+    "micropayments"
+  ],
+  "author": "Atlas402 Team",
+  "license": "Apache-2.0"
+}
+
