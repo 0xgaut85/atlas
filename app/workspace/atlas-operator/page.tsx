@@ -10,6 +10,7 @@ import { hasValidSession } from '@/lib/x402-session';
 import { ManageWallet } from '../../components/ManageWallet';
 import { makeUSDCTransfer } from '@/lib/x402-client';
 import { X402_CONFIG } from '@/lib/x402-config';
+import GlitchText from '../../components/motion/GlitchText';
 
 export default function AtlasOperatorPage() {
   const { address, isConnected } = useAppKitAccount();
@@ -289,8 +290,11 @@ export default function AtlasOperatorPage() {
         {hasAccess && (
           <>
             <div className="mb-8">
-              <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-black mb-4 font-title">
-                Atlas Operator
+              <h1 className="text-[clamp(3rem,8vw,6rem)] font-bold text-black mb-4 font-title leading-[0.9]">
+                <GlitchText text="Atlas" delay={300} replayOnView inViewThreshold={0.6} />{' '}
+                <span className="text-red-600">
+                  <GlitchText text="Operator" delay={600} replayOnView inViewThreshold={0.6} />
+                </span>
               </h1>
               <p className="text-xl text-gray-600 max-w-3xl">
                 Autonomous AI operator with full access to x402 services. Execute workflows on your behalf with approval guardrails.

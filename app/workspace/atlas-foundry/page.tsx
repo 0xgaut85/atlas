@@ -12,6 +12,7 @@ import { PaymentSuccessModal } from '../../components/x402/PaymentSuccessModal';
 import { hasValidSession } from '@/lib/x402-session';
 import { X402Service } from '@/lib/payai-client';
 import { ManageWallet } from '../../components/ManageWallet';
+import GlitchText from '../../components/motion/GlitchText';
 
 export default function AtlasFoundryPage() {
   const { address, isConnected } = useAppKitAccount();
@@ -238,9 +239,12 @@ export default function AtlasFoundryPage() {
                   transition={{ duration: 0.8 }}
                   className="text-center"
                 >
-                  <h1 className="text-6xl sm:text-7xl md:text-8xl font-bold text-black mb-6 font-title leading-[0.9]">
-                    Atlas <span className="text-red-600">Foundry</span>
-              </h1>
+                  <h1 className="text-[clamp(4rem,10vw,8rem)] font-bold text-black mb-6 font-title leading-[0.9]">
+                    <GlitchText text="Atlas" delay={300} replayOnView inViewThreshold={0.6} />{' '}
+                    <span className="text-red-600">
+                      <GlitchText text="Foundry" delay={600} replayOnView inViewThreshold={0.6} />
+                    </span>
+                  </h1>
                   <p className="text-xl md:text-2xl text-gray-600 leading-relaxed max-w-3xl mx-auto">
                     Create, browse, and mint x402-enabled tokens with built-in micropayment infrastructure.
                   </p>

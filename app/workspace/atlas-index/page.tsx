@@ -9,6 +9,7 @@ import { PaymentStatusBar } from '../../components/x402/PaymentStatusBar';
 import { X402Indexer } from '../../components/x402/X402Indexer';
 import { hasValidSession } from '@/lib/x402-session';
 import { ManageWallet } from '../../components/ManageWallet';
+import GlitchText from '../../components/motion/GlitchText';
 
 export default function AtlasIndexPage() {
   const { address, isConnected } = useAppKitAccount();
@@ -91,8 +92,11 @@ export default function AtlasIndexPage() {
         {hasAccess && (
           <>
             <div className="mb-12">
-              <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-black mb-4 font-title">
-                Atlas Index
+              <h1 className="text-[clamp(3rem,8vw,6rem)] font-bold text-black mb-4 font-title leading-[0.9]">
+                <GlitchText text="Atlas" delay={300} replayOnView inViewThreshold={0.6} />{' '}
+                <span className="text-red-600">
+                  <GlitchText text="Index" delay={600} replayOnView inViewThreshold={0.6} />
+                </span>
               </h1>
               <p className="text-xl text-gray-600 max-w-3xl">
                 Real-time visibility into all x402 services, providing transparency, tracking and trust across the network.

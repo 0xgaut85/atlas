@@ -9,6 +9,7 @@ import { PaymentStatusBar } from '../../components/x402/PaymentStatusBar';
 import { IntegrationLayer } from '../../components/x402/IntegrationLayer';
 import { hasValidSession } from '@/lib/x402-session';
 import { ManageWallet } from '../../components/ManageWallet';
+import GlitchText from '../../components/motion/GlitchText';
 
 export default function AtlasMeshPage() {
   const { address, isConnected } = useAppKitAccount();
@@ -92,8 +93,11 @@ export default function AtlasMeshPage() {
           <>
             {/* Hero Section */}
             <div className="mb-16 text-center max-w-4xl mx-auto">
-              <h1 className="text-5xl sm:text-6xl md:text-7xl font-bold text-black mb-6 font-title leading-tight">
-                Atlas Mesh
+              <h1 className="text-[clamp(4rem,10vw,7rem)] font-bold text-black mb-6 font-title leading-[0.9]">
+                <GlitchText text="Atlas" delay={300} replayOnView inViewThreshold={0.6} />{' '}
+                <span className="text-red-600">
+                  <GlitchText text="Mesh" delay={600} replayOnView inViewThreshold={0.6} />
+                </span>
               </h1>
               <p className="text-xl md:text-2xl text-gray-600 leading-relaxed mb-8">
                 Turn your API into a revenue stream. Register your service and start earning with every request.

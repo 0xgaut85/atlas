@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useAppKit, useAppKitAccount } from '@reown/appkit/react';
 import Link from 'next/link';
 import { ManageWallet } from '../../components/ManageWallet';
+import GlitchText from '../../components/motion/GlitchText';
 
 type BalanceData = {
   evm: { network: string; native: string; usdc: string } | null;
@@ -122,7 +123,12 @@ export default function AtlasDashboardPage() {
       <div className="max-w-7xl mx-auto px-6 sm:px-8">
         {/* Hero */}
         <div className="mb-10">
-          <h1 className="text-5xl md:text-6xl font-bold font-title">Atlas <span className="text-red-600">Dashboard</span></h1>
+          <h1 className="text-[clamp(3rem,8vw,6rem)] font-bold font-title leading-[0.9]">
+            <GlitchText text="Atlas" delay={300} replayOnView inViewThreshold={0.6} />{' '}
+            <span className="text-red-600">
+              <GlitchText text="Dashboard" delay={600} replayOnView inViewThreshold={0.6} />
+            </span>
+          </h1>
           <p className="text-gray-600 mt-3">All your balances, payments, mints, services — across Base and Solana.</p>
         </div>
 

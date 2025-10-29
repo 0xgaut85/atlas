@@ -8,6 +8,7 @@ import { PaymentGateModal } from '../../components/x402/PaymentGateModal';
 import { PaymentStatusBar } from '../../components/x402/PaymentStatusBar';
 import { hasValidSession } from '@/lib/x402-session';
 import { ManageWallet } from '../../components/ManageWallet';
+import GlitchText from '../../components/motion/GlitchText';
 
 export default function CommandConsolePage() {
   const { address, isConnected } = useAppKitAccount();
@@ -90,8 +91,11 @@ export default function CommandConsolePage() {
         {hasAccess && (
           <>
             <div className="mb-12">
-              <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-black mb-4 font-title">
-                Command Console
+              <h1 className="text-[clamp(3rem,8vw,6rem)] font-bold text-black mb-4 font-title leading-[0.9]">
+                <GlitchText text="Command" delay={300} replayOnView inViewThreshold={0.6} />{' '}
+                <span className="text-red-600">
+                  <GlitchText text="Console" delay={600} replayOnView inViewThreshold={0.6} />
+                </span>
               </h1>
               <p className="text-xl text-gray-600 max-w-3xl">
                 Discover and interact with x402-powered services. Browse APIs, AI models, and utilities with instant micropayments.
