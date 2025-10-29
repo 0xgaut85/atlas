@@ -29,9 +29,11 @@ export async function GET(req: NextRequest) {
 
     console.log('🔍 Fetching user activity:', { address, solAddress });
 
-    // Normalize addresses
-    const userAddress = address?.toLowerCase();
-    const userSolAddress = solAddress?.toLowerCase();
+    // Normalize addresses (ensure consistent format)
+    const userAddress = address?.toLowerCase().trim();
+    const userSolAddress = solAddress?.toLowerCase().trim();
+    
+    console.log('📍 Normalized addresses:', { userAddress, userSolAddress });
 
     // Fetch payments from tracking system - try both addresses
     let payments: Awaited<ReturnType<typeof listPayments>> = [];
@@ -44,10 +46,19 @@ export async function GET(req: NextRequest) {
           userAddress: userAddress,
           limit: 1000,
         });
+        console.log(`🔍 Found ${evmPayments.length} EVM payments for ${userAddress}`);
+        if (evmPayments.length > 0) {
+          console.log('📋 Sample payment:', {
+            txHash: evmPayments[0].txHash,
+            userAddress: evmPayments[0].userAddress,
+            category: evmPayments[0].category,
+            amountMicro: evmPayments[0].amountMicro,
+          });
+        }
         payments.push(...evmPayments);
-        console.log(`✅ Loaded ${evmPayments.length} EVM payments`);
       } catch (dbError: any) {
         console.error('❌ Database error loading EVM payments:', dbError.message);
+        console.error('❌ Stack:', dbError.stack);
       }
     }
     
@@ -58,10 +69,29 @@ export async function GET(req: NextRequest) {
           userAddress: userSolAddress,
           limit: 1000,
         });
+        console.log(`🔍 Found ${solPayments.length} Solana payments for ${userSolAddress}`);
         payments.push(...solPayments);
-        console.log(`✅ Loaded ${solPayments.length} Solana payments`);
       } catch (dbError: any) {
         console.error('❌ Database error loading Solana payments:', dbError.message);
+      }
+    }
+    
+    // Also try fetching ALL payments without filter to debug
+    if (payments.length === 0) {
+      console.log('⚠️ No payments found for user addresses, checking total payments in DB...');
+      try {
+        const allPayments = await listPayments({ limit: 10 });
+        console.log(`📊 Total payments in DB (sample):`, allPayments.length);
+        if (allPayments.length > 0) {
+          console.log('📋 Sample payment from DB:', {
+            txHash: allPayments[0].txHash,
+            userAddress: allPayments[0].userAddress,
+            category: allPayments[0].category,
+            network: allPayments[0].network,
+          });
+        }
+      } catch (e) {
+        console.error('Error checking total payments:', e);
       }
     }
 

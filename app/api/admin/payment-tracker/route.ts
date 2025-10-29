@@ -22,17 +22,38 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
+    // Normalize addresses
+    const normalizedFrom = from?.toLowerCase().trim();
+    const normalizedTo = to?.toLowerCase().trim();
+    
+    console.log('💾 Recording payment:', {
+      txHash,
+      from: normalizedFrom,
+      to: normalizedTo,
+      network,
+      amountMicro,
+      category,
+      service,
+    });
+
     // Record the payment
     const payment = await recordPayment({
       txHash,
-      userAddress: from,
-      merchantAddress: to,
+      userAddress: normalizedFrom,
+      merchantAddress: normalizedTo,
       network: network === 'base' ? 'base' : 'solana-mainnet',
       amountMicro: typeof amountMicro === 'string' ? parseInt(amountMicro) : amountMicro,
       currency: 'USDC',
       category: category || 'other',
       service: service || null,
       metadata: metadata || null,
+    });
+
+    console.log('✅ Payment recorded:', {
+      txHash: payment.txHash,
+      userAddress: payment.userAddress,
+      network: payment.network,
+      category: payment.category,
     });
 
     return NextResponse.json({
