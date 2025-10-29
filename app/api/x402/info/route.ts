@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
     // Format according to x402 standard for merchant discovery
     return NextResponse.json({
       name: 'Atlas402',
-      description: 'Infrastructure platform for x402 protocol - micropayments for APIs',
+      description: 'Monetize every request, Atlas a x402 centric ecosystem',
       version: '1.0.0',
       merchant: merchantUrl,
       services: [

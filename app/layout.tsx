@@ -8,7 +8,7 @@ import NavbarVertical from "./components/NavbarVertical";
 
 export const metadata: Metadata = {
   title: "Atlas402",
-  description: "x402 protocol infrastructure. Every API call becomes an instant micropayment—pay-per-request with no subscriptions.",
+  description: "Monetize every request, Atlas a x402 centric ecosystem",
   icons: {
     icon: '/logo.jpg',
     shortcut: '/logo.jpg',
@@ -16,13 +16,13 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: "Atlas402",
-    description: "x402 protocol infrastructure. Every API call becomes an instant micropayment—pay-per-request with no subscriptions.",
+    description: "Monetize every request, Atlas a x402 centric ecosystem",
     images: ['/logo.jpg'],
   },
   twitter: {
     card: 'summary_large_image',
     title: "Atlas402",
-    description: "x402 protocol infrastructure. Every API call becomes an instant micropayment—pay-per-request with no subscriptions.",
+    description: "Monetize every request, Atlas a x402 centric ecosystem",
     images: ['/logo.jpg'],
   },
 };
