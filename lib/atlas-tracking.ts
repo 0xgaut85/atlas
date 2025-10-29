@@ -484,25 +484,33 @@ export async function upsertService(record: ServiceRecord): Promise<ServiceRecor
 export async function listServices(): Promise<ServiceRecord[]> {
   if (DB_ENABLED) {
     await ensureDb();
-    const rows = await sql`
-      SELECT id, name, description, endpoint, merchant_address, category, network, price_amount, price_currency, metadata, created_at
-      FROM atlas_services
-      ORDER BY created_at DESC
-    `;
+    try {
+      const rows = await sql`
+        SELECT id, name, description, endpoint, merchant_address, category, network, price_amount, price_currency, metadata, created_at
+        FROM atlas_services
+        ORDER BY created_at DESC
+      `;
 
-    return rows.rows.map((row) => ({
-      id: row.id,
-      name: row.name,
-      description: row.description ?? undefined,
-      endpoint: row.endpoint ?? undefined,
-      merchantAddress: row.merchant_address ?? undefined,
-      category: row.category ?? undefined,
-      network: row.network ?? undefined,
-      priceAmount: row.price_amount ?? undefined,
-      priceCurrency: row.price_currency ?? undefined,
-      metadata: row.metadata ?? undefined,
-      createdAt: new Date(row.created_at),
-    }));
+      console.log(`✅ Loaded ${rows.length} services from database`);
+
+      return rows.map((row: any) => ({
+        id: row.id,
+        name: row.name,
+        description: row.description ?? undefined,
+        endpoint: row.endpoint ?? undefined,
+        merchantAddress: row.merchant_address ?? undefined,
+        category: row.category ?? undefined,
+        network: row.network ?? undefined,
+        priceAmount: row.price_amount ?? undefined,
+        priceCurrency: row.price_currency ?? undefined,
+        metadata: row.metadata ?? undefined,
+        createdAt: new Date(row.created_at),
+      }));
+    } catch (dbError: any) {
+      console.error('❌ Database error loading services:', dbError.message);
+      console.error('❌ Stack:', dbError.stack);
+      return [];
+    }
   }
 
   return Array.from(fallbackStore.services.values()).sort((a, b) => {
