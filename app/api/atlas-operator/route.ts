@@ -7,7 +7,8 @@ export async function GET(request: NextRequest) {
 
   if (!verification.valid) {
     console.log('Payment verification failed:', verification.error);
-    return create402Response(request, '$1.00', 'Autonomous AI operator with x402 access');
+    // Return Base-only for x402scan compatibility
+    return create402Response(request, '$1.00', 'Autonomous AI operator with x402 access', ['base']);
   }
 
   // Payment verified - return Atlas Operator capabilities
