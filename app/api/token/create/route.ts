@@ -18,6 +18,29 @@ const DEPLOYMENT_FEE_USD = 10; // Fixed fee: 10 USDC
 
 export async function POST(req: NextRequest) {
   try {
+    // Calculate deployment fee (fixed 10 USDC)
+    const deploymentFeeUSD = DEPLOYMENT_FEE_USD;
+    const deploymentFeeMicro = Math.round(deploymentFeeUSD * 1_000_000);
+
+    // Verify x402 payment FIRST - before validating body fields
+    // This ensures the endpoint always returns 402 when no payment is provided
+    const verification = await verifyX402Payment(
+      req,
+      deploymentFeeUSD.toString()
+    );
+
+    if (!verification.valid) {
+      // Return 402 Payment Required - Base-only for x402scan compatibility
+      return create402Response(req, `$${deploymentFeeUSD.toFixed(2)}`, 'Create and deploy x402-protected tokens', ['base']);
+    }
+
+    console.log('✅ Deployment fee verified:', {
+      deploymentFeeUSD,
+      txHash: verification.payment?.transactionHash,
+      userAddress: verification.payment?.from,
+    });
+
+    // Now parse and validate body fields AFTER payment is verified
     const body = await req.json();
     const {
       name,
@@ -38,27 +61,6 @@ export async function POST(req: NextRequest) {
         error: 'Missing required fields: name, symbol, supply, pricePerMint, network, deployerAddress',
       }, { status: 400 });
     }
-
-    // Calculate deployment fee (fixed 10 USDC)
-    const deploymentFeeUSD = DEPLOYMENT_FEE_USD;
-    const deploymentFeeMicro = Math.round(deploymentFeeUSD * 1_000_000);
-
-    // Verify x402 payment for deployment fee
-    const verification = await verifyX402Payment(
-      req,
-      deploymentFeeUSD.toString()
-    );
-
-    if (!verification.valid) {
-      // Return 402 Payment Required - Base-only for x402scan compatibility
-      return create402Response(req, `$${deploymentFeeUSD.toFixed(2)}`, 'Create and deploy x402-protected tokens', ['base']);
-    }
-
-    console.log('✅ Deployment fee verified:', {
-      deploymentFeeUSD,
-      txHash: verification.payment?.transactionHash,
-      userAddress: verification.payment?.from,
-    });
 
     // Record deployment fee payment
     try {
