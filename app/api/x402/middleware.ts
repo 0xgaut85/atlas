@@ -259,12 +259,18 @@ export function create402Response(
   }
 
   // x402scan strict schema format
+  const responseBody: any = {
+    x402Version: 1,
+    accepts,
+  };
+  
+  // Only include error field if there's an actual error (x402scan prefers omission)
+  // if (error) {
+  //   responseBody.error = error;
+  // }
+
   return new Response(
-    JSON.stringify({
-      x402Version: 1,
-      error: null, // x402scan prefers null over error message
-      accepts,
-    }),
+    JSON.stringify(responseBody),
     {
       status: 402,
       headers: {
