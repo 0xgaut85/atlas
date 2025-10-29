@@ -271,8 +271,9 @@ class PayAIClient {
             return null;
           }
 
-          // Extract description from metadata or other fields - try multiple sources
-          let description = item.metadata?.description || 
+          // Extract description from accepts[0].description (most common), metadata, or other fields - try multiple sources
+          let description = accepts?.description ||
+                           item.metadata?.description || 
                            item.metadata?.summary || 
                            item.metadata?.info ||
                            item.metadata?.title ||
@@ -283,8 +284,9 @@ class PayAIClient {
                            item.title ||
                            '';
           
-          // Extract service name from resource URL or metadata
-          const name = item.metadata?.name || 
+          // Extract service name from accepts[0].description, metadata, or resource URL
+          const name = accepts?.description?.split(' ')[0]?.replace(/\$/, '') ||
+                      item.metadata?.name || 
                       item.metadata?.title || 
                       item.name ||
                       this.extractServiceName(resource, description);
@@ -306,7 +308,9 @@ class PayAIClient {
           const id = this.generateServiceId(resource, index);
           
           // Categorize based on description and resource
-          const category = this.categorizeFromContent(resource, description);
+          // Use accepts.description if available, otherwise fallback to description variable
+          const categoryDescription = accepts?.description || description;
+          const category = this.categorizeFromContent(resource, categoryDescription);
 
           return {
             id,
