@@ -24,6 +24,8 @@ export default function AtlasFoundryPage() {
   const [lastMintedService, setLastMintedService] = useState<X402Service | null>(null);
   const [successTxHash, setSuccessTxHash] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'browse' | 'create'>('browse');
+  const [showMintFeeModal, setShowMintFeeModal] = useState(false);
+  const [pendingMintService, setPendingMintService] = useState<X402Service | null>(null);
   
   // Token creation form state
   const [tokenForm, setTokenForm] = useState({
@@ -61,32 +63,44 @@ export default function AtlasFoundryPage() {
     if (data.success) {
       const service = data.services.find((s: X402Service) => s.id === serviceId);
       if (service) {
-        setPaymentService(service);
-        setLastMintedService(service);
+        // Store service and show mint fee payment first
+        setPendingMintService(service);
+        setShowMintFeeModal(true);
+      }
+    }
+  };
 
-        try {
-          await fetch('/api/admin/services', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              id: service.id,
-              name: service.name,
-              description: service.description,
-              endpoint: service.endpoint,
-              merchantAddress: service.accepts?.[0]?.payTo,
-              category: service.category,
-              network: service.price?.network,
-              priceAmount: service.price?.amount,
-              priceCurrency: service.price?.currency,
-              metadata: {
-                icon: service.icon,
-                accepts: service.accepts,
-              },
-            }),
-          });
-        } catch (error) {
-          console.error('Failed to upsert service metadata', error);
-        }
+  const handleMintFeeSuccess = async (txHash: string) => {
+    console.log('Mint fee paid:', txHash);
+    setShowMintFeeModal(false);
+    
+    // Now proceed with actual token mint
+    if (pendingMintService) {
+      setPaymentService(pendingMintService);
+      setLastMintedService(pendingMintService);
+
+      try {
+        await fetch('/api/admin/services', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: pendingMintService.id,
+            name: pendingMintService.name,
+            description: pendingMintService.description,
+            endpoint: pendingMintService.endpoint,
+            merchantAddress: pendingMintService.accepts?.[0]?.payTo,
+            category: pendingMintService.category,
+            network: pendingMintService.price?.network,
+            priceAmount: pendingMintService.price?.amount,
+            priceCurrency: pendingMintService.price?.currency,
+            metadata: {
+              icon: pendingMintService.icon,
+              accepts: pendingMintService.accepts,
+            },
+          }),
+        });
+      } catch (error) {
+        console.error('Failed to upsert service metadata', error);
       }
     }
   };
@@ -658,6 +672,36 @@ export default function AtlasFoundryPage() {
         )}
       </div>
       </div>
+
+      {/* Mint Fee Modal */}
+      {showMintFeeModal && pendingMintService && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white border-2 border-black rounded-lg p-8 max-w-md w-full">
+            <h3 className="text-2xl font-bold text-black mb-4 font-title">Mint Fee Required</h3>
+            <p className="text-gray-700 mb-6">
+              A mint fee of $0.25 USDC is required to mint tokens via Atlas Foundry. This fee goes to Atlas402 platform.
+            </p>
+            <MintFeeHandler
+              network={pendingMintService.price.network as 'base' | 'solana-mainnet'}
+              onSuccess={handleMintFeeSuccess}
+              onError={(error) => {
+                console.error('Mint fee error:', error);
+                alert(`Mint fee payment failed: ${error}`);
+                setShowMintFeeModal(false);
+              }}
+            />
+            <button
+              onClick={() => {
+                setShowMintFeeModal(false);
+                setPendingMintService(null);
+              }}
+              className="mt-4 w-full px-6 py-3 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-all"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Mint Handler */}
       {paymentService && (

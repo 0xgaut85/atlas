@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { X402Service } from '@/lib/payai-client';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import { PurchaseServiceButton } from './PurchaseServiceButton';
 
 export function X402Indexer() {
   const [services, setServices] = useState<X402Service[]>([]);
@@ -408,12 +409,13 @@ export function X402Indexer() {
 
                     {/* Bottom - Action Buttons */}
                     <div className="flex gap-3">
-                      <Link
-                        href="/dapp/service-hub"
-                        className="flex-1 px-6 py-4 bg-black text-white hover:bg-red-600 transition-all duration-300 font-medium text-center rounded"
-                      >
-                        Test Service
-                      </Link>
+                      <PurchaseServiceButton 
+                        service={service}
+                        onSuccess={(txHash) => {
+                          console.log('Service purchased:', txHash);
+                          // Optionally redirect or show success message
+                        }}
+                      />
                       <Link
                         href="/docs/clients"
                         className="flex-1 px-6 py-4 bg-white border-2 border-black text-black hover:border-red-600 hover:text-red-600 transition-all duration-300 font-medium text-center rounded"
