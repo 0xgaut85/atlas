@@ -1,13 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 
-// Check if API key is available
-if (!process.env.ANTHROPIC_API_KEY) {
-  console.error('❌ ANTHROPIC_API_KEY is not set in environment variables');
+// Load environment variables from Vercel
+// Vercel automatically injects environment variables into process.env
+const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
+
+// Validate that the API key is loaded from Vercel
+if (!ANTHROPIC_API_KEY) {
+  console.error('❌ ANTHROPIC_API_KEY is not set in Vercel environment variables');
+  console.error('Please check: https://vercel.com/gauthiers-projects-fae77e6c/atlas402/settings/environment-variables');
 }
 
 const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY || '',
+  apiKey: ANTHROPIC_API_KEY || '',
 });
 
 // Use only claude-3-opus-20240229
@@ -153,6 +158,18 @@ async function listTokens(network?: string, category?: string) {
 
 export async function POST(req: NextRequest) {
   try {
+    // Verify that Vercel environment variables are loaded
+    if (!ANTHROPIC_API_KEY) {
+      console.error('❌ ANTHROPIC_API_KEY missing - Check Vercel environment variables');
+      return NextResponse.json({ 
+        message: 'Configuration error: Anthropic API key is not configured. Please check Vercel environment variables at https://vercel.com/gauthiers-projects-fae77e6c/atlas402/settings/environment-variables',
+        error: {
+          type: 'configuration_error',
+          message: 'ANTHROPIC_API_KEY environment variable is not set in Vercel'
+        }
+      }, { status: 500 });
+    }
+
     const { messages } = await req.json();
     
     if (!messages || messages.length === 0) {
@@ -535,7 +552,7 @@ Important: Be conversational, friendly, and natural. You're an AI assistant that
     if (error?.status === 429) {
       errorMsg = 'Rate limit exceeded. Please wait a moment and try again.';
     } else if (error?.status === 401) {
-      errorMsg = 'API authentication failed. Please check your API key.';
+      errorMsg = 'API authentication failed. The ANTHROPIC_API_KEY environment variable from Vercel is either missing, invalid, or not properly loaded. Please verify the API key is correctly set in Vercel environment variables at https://vercel.com/gauthiers-projects-fae77e6c/atlas402/settings/environment-variables and ensure it is enabled for Production environment.';
     } else if (error?.status === 400) {
       errorMsg = 'Invalid request. Please try rephrasing your message.';
     }
