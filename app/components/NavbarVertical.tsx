@@ -31,7 +31,7 @@ const items: NavItem[] = [
   { label: 'Roadmap', href: '/roadmap', type: 'learn' },
   { label: 'GitHub', href: 'https://github.com/atlas402', type: 'visit', external: true },
   { label: 'Twitter', href: 'https://x.com/atlas402dotcom', type: 'visit', external: true },
-  { label: 'Telegram', href: 'https://t.me/xatlas402', type: 'visit', external: true },
+  { label: 'Discord', href: '#', type: 'visit', external: true, disabled: true },
 ];
 
 function TypeBadge({ type }: { type: ItemType }) {
