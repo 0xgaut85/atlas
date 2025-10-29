@@ -1,27 +1,34 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useAppKitAccount } from '@reown/appkit/react';
+import { useAppKitAccount, useAppKitProvider } from '@reown/appkit/react';
+import type { Provider } from '@reown/appkit-adapter-wagmi';
 import { useSendTransaction, useWaitForTransactionReceipt, useSwitchChain } from 'wagmi';
 import { encodeFunctionData, erc20Abi } from 'viem';
 import { USDC_CONTRACT_ADDRESS, getNetworkChainId, getNetworkName } from '@/lib/x402-utils';
 import { X402_CONFIG, TOKENS } from '@/lib/x402-config';
+import { makeX402Request } from '@/lib/x402-client';
+import { X402Service } from '@/lib/payai-client';
 
 interface MintFeeHandlerProps {
   network: 'base' | 'solana-mainnet';
+  service?: X402Service; // Optional: service to call after fee payment
   onSuccess: (txHash: string) => void;
   onError?: (error: string) => void;
 }
 
 const MINT_FEE_MICRO = 250000; // 0.25 USDC in micro units
 
-export function MintFeeHandler({ network, onSuccess, onError }: MintFeeHandlerProps) {
+export function MintFeeHandler({ network, service, onSuccess, onError }: MintFeeHandlerProps) {
   const { address, caipAddress } = useAppKitAccount();
   const { switchChain } = useSwitchChain();
+  const { walletProvider } = useAppKitProvider<Provider>('eip155');
   
   const chainId = caipAddress ? parseInt(caipAddress.split(':')[1]) : undefined;
   const [isProcessing, setIsProcessing] = useState(false);
+  const [step, setStep] = useState<'fee' | 'x402'>('fee');
   const [error, setError] = useState<string | null>(null);
+  const [x402Result, setX402Result] = useState<any>(null);
   
   // Determine payment recipient - use Atlas402's address (revenue)
   const payToAddress = network === 'base' 
@@ -96,12 +103,13 @@ export function MintFeeHandler({ network, onSuccess, onError }: MintFeeHandlerPr
     }
   };
 
-  // Handle payment success
+  // Handle fee payment success - then make x402 call to token mint endpoint if service provided
   useEffect(() => {
-    if (isPaymentSuccess && paymentData) {
-      // Record payment in database as revenue
-      const recordRevenue = async () => {
+    if (isPaymentSuccess && paymentData && step === 'fee') {
+      // Record fee payment in database
+      const recordFeeAndCallService = async () => {
         try {
+          // Record fee payment
           await fetch('/api/admin/payment-tracker', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -112,24 +120,85 @@ export function MintFeeHandler({ network, onSuccess, onError }: MintFeeHandlerPr
               to: payToAddress,
               amountMicro: MINT_FEE_MICRO,
               category: 'mint',
-              service: 'Token Mint Fee',
+              service: service ? `Mint Fee: ${service.name}` : 'Token Mint Fee',
               metadata: {
                 purchaseType: 'token_mint_fee',
                 revenue: true,
+                serviceId: service?.id,
               },
             }),
           });
           console.log('✅ Mint fee recorded:', paymentData);
+          
+          // If service endpoint is provided, make x402 call to mint the token
+          if (service && walletProvider && service.endpoint) {
+            setStep('x402');
+            setIsProcessing(true);
+            
+            try {
+              console.log('🌐 Making x402 payment call to token mint endpoint:', service.endpoint);
+              const x402Response = await makeX402Request(
+                walletProvider,
+                service.endpoint,
+                { method: 'GET' }
+              );
+              
+              if (!x402Response.ok) {
+                throw new Error(`x402 mint call failed: ${x402Response.status} ${x402Response.statusText}`);
+              }
+              
+              const x402Data = await x402Response.json();
+              setX402Result(x402Data);
+              console.log('✅ x402 token mint call successful:', x402Data);
+              
+              // Record the mint event
+              try {
+                const amountMicro = Number(service.accepts?.[0]?.maxAmountRequired || 0);
+                await fetch('/api/admin/user-events', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    userAddress: address?.toLowerCase(),
+                    eventType: 'token_minted',
+                    network: service.price?.network,
+                    referenceId: service.id,
+                    amountMicro: amountMicro || undefined,
+                    metadata: {
+                      tokenName: service.name,
+                      serviceId: service.id,
+                      endpoint: service.endpoint,
+                      txHash: paymentData,
+                      x402PaymentCompleted: true,
+                    },
+                  }),
+                });
+                console.log('✅ Mint event recorded');
+              } catch (eventError) {
+                console.error('Failed to record mint event:', eventError);
+              }
+              
+              onSuccess(paymentData);
+            } catch (x402Error: any) {
+              console.error('x402 mint call error:', x402Error);
+              setError(`Token mint failed: ${x402Error.message}`);
+              if (onError) onError(x402Error.message);
+            } finally {
+              setIsProcessing(false);
+            }
+          } else {
+            // No service endpoint - just report fee payment success
+            onSuccess(paymentData);
+            setIsProcessing(false);
+          }
         } catch (e) {
           console.error('Failed to record mint fee:', e);
+          setIsProcessing(false);
         }
       };
       
-      recordRevenue();
-      onSuccess(paymentData);
-      setIsProcessing(false);
+      recordFeeAndCallService();
     }
-  }, [isPaymentSuccess, paymentData, onSuccess, address, payToAddress, network]);
+  }, [isPaymentSuccess, paymentData, step, walletProvider, service, address, payToAddress, network, onSuccess, onError]);
 
   // Handle payment errors
   useEffect(() => {
@@ -163,14 +232,22 @@ export function MintFeeHandler({ network, onSuccess, onError }: MintFeeHandlerPr
         className="w-full px-6 py-3 bg-red-600 text-white hover:bg-red-700 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed rounded-lg font-medium transition-all"
       >
         {isProcessing || isPaymentPending || isPaymentConfirming 
-          ? 'Processing Mint Fee...' 
+          ? (step === 'fee' ? 'Processing Mint Fee...' : 'Minting token...')
           : 'Pay $0.25 USDC Mint Fee'}
       </button>
       {error && (
         <p className="mt-2 text-sm text-red-600 text-center">{error}</p>
       )}
-      {isPaymentSuccess && (
+      {step === 'x402' && isPaymentSuccess && !isProcessing && (
+        <p className="mt-2 text-sm text-green-600 text-center">✅ Fee paid! Token minted successfully!</p>
+      )}
+      {!service && isPaymentSuccess && (
         <p className="mt-2 text-sm text-green-600 text-center">Mint fee paid! Proceeding to mint...</p>
+      )}
+      {x402Result && (
+        <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded text-xs text-green-700">
+          Token mint response received
+        </div>
       )}
     </div>
   );

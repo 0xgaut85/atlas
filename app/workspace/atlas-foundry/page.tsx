@@ -72,12 +72,12 @@ export default function AtlasFoundryPage() {
   };
 
   const handleMintFeeSuccess = async (txHash: string) => {
-    console.log('Mint fee paid:', txHash);
+    console.log('Mint fee paid and x402 call completed:', txHash);
     setShowMintFeeModal(false);
+    setSuccessTxHash(txHash);
     
-    // Now proceed with actual token mint
+    // Record the minted service
     if (pendingMintService) {
-      setPaymentService(pendingMintService);
       setLastMintedService(pendingMintService);
 
       try {
@@ -97,6 +97,9 @@ export default function AtlasFoundryPage() {
             metadata: {
               icon: pendingMintService.icon,
               accepts: pendingMintService.accepts,
+              minted: true,
+              mintedAt: new Date().toISOString(),
+              mintedBy: address,
             },
           }),
         });
@@ -684,6 +687,7 @@ export default function AtlasFoundryPage() {
             </p>
             <MintFeeHandler
               network={pendingMintService.price.network as 'base' | 'solana-mainnet'}
+              service={pendingMintService}
               onSuccess={handleMintFeeSuccess}
               onError={(error) => {
                 console.error('Mint fee error:', error);
