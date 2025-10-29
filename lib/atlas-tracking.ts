@@ -318,6 +318,8 @@ export async function listPayments(options: ListPaymentsOptions = {}): Promise<A
       }
 
       console.log('🔍 Fetching payments with filters:', { userAddress, network, category, since, limit, offset });
+      console.log('[atlas-tracking] DB_ENABLED:', DB_ENABLED);
+      
       const rows = await query;
       
       console.log(`✅ Query returned ${rows.length} rows`);
@@ -326,7 +328,22 @@ export async function listPayments(options: ListPaymentsOptions = {}): Promise<A
           txHash: rows[0].tx_hash,
           userAddress: rows[0].user_address,
           category: rows[0].category,
+          amountMicro: rows[0].amount_micro,
+          network: rows[0].network,
+          createdAt: rows[0].created_at,
         });
+      } else {
+        console.warn('⚠️ Query returned 0 rows - checking if database has any payments...');
+        // Try a simple query without filters to see if DB has any data
+        try {
+          const allRows = await sql`
+            SELECT COUNT(*) as count FROM atlas_payments
+          `;
+          const totalCount = allRows[0]?.count || 0;
+          console.log(`📊 Total payments in database: ${totalCount}`);
+        } catch (countError: any) {
+          console.error('❌ Error counting total payments:', countError.message);
+        }
       }
       
       return rows.map((row: any) => ({
