@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { X402_CONFIG } from '@/lib/x402-config';
+import { X402_CONFIG, TOKENS } from '@/lib/x402-config';
 
 export async function GET(req: NextRequest) {
   try {
+    // Get merchant URL from environment or request headers
+    const host = req.headers.get('host') || process.env.NEXT_PUBLIC_MERCHANT_URL || 'atlas402.com';
+    const merchantUrl = host.startsWith('http') ? host : `https://${host}`;
+    
+    // Format according to x402 standard for merchant discovery
     return NextResponse.json({
       name: 'Atlas402',
       description: 'Infrastructure platform for x402 protocol - micropayments for APIs',
@@ -12,7 +17,7 @@ export async function GET(req: NextRequest) {
           id: 'service-hub',
           name: 'Service Hub',
           description: 'Discover and access x402-powered services',
-          endpoint: '/api/service-hub',
+          endpoint: `${merchantUrl}/api/service-hub`,
           price: {
             amount: '1.00',
             currency: 'USDC',
@@ -23,7 +28,7 @@ export async function GET(req: NextRequest) {
           id: 'token-indexer',
           name: 'Token Indexer',
           description: 'Index and search x402-enabled tokens',
-          endpoint: '/api/token-indexer',
+          endpoint: `${merchantUrl}/api/token-indexer`,
           price: {
             amount: '1.00',
             currency: 'USDC',
@@ -34,7 +39,7 @@ export async function GET(req: NextRequest) {
           id: 'agent',
           name: 'AI Agent',
           description: 'AI agent capabilities and tools',
-          endpoint: '/api/agent',
+          endpoint: `${merchantUrl}/api/agent`,
           price: {
             amount: '1.00',
             currency: 'USDC',
@@ -45,7 +50,7 @@ export async function GET(req: NextRequest) {
           id: 'atlas-operator',
           name: 'Atlas Operator',
           description: 'Autonomous AI operator with x402 access',
-          endpoint: '/api/chat',
+          endpoint: `${merchantUrl}/api/chat`,
           price: {
             amount: '1.00',
             currency: 'USDC',
@@ -58,6 +63,12 @@ export async function GET(req: NextRequest) {
         networks: X402_CONFIG.supportedNetworks,
         facilitator: X402_CONFIG.facilitatorUrl,
       },
+    }, {
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
+      },
     });
   } catch (error: any) {
     console.error('Error in info route:', error);
@@ -65,5 +76,16 @@ export async function GET(req: NextRequest) {
       error: error.message || 'Failed to get service info',
     }, { status: 500 });
   }
+}
+
+export async function OPTIONS(req: NextRequest) {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+    },
+  });
 }
 
