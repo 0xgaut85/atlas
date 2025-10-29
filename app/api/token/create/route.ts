@@ -28,6 +28,7 @@ export async function POST(req: NextRequest) {
       network,
       deployerAddress,
       contractAddress, // Optional: if contract already deployed
+      devSupplyToMint, // Optional: supply to mint for dev address
     } = body;
 
     // Validate required fields
@@ -135,6 +136,7 @@ export async function POST(req: NextRequest) {
           supply,
           pricePerMint,
           deploymentFeeUSD,
+          devSupplyToMint: devSupplyToMint || '0',
           deployedAt: contractAddress ? new Date().toISOString() : null,
           deploymentTxHash: verification.payment?.transactionHash || null,
           deploymentInstructions: deploymentData.deploymentInstructions,
@@ -148,7 +150,7 @@ export async function POST(req: NextRequest) {
     // Return success with deployment instructions
     return NextResponse.json({
       success: true,
-      message: 'Token deployment fee paid. Deploy your contract to complete setup.',
+      message: `You paid $${deploymentFeeUSD} deployment fee. You can now mint your token.`,
       deploymentFeeUSD,
       deploymentFeeTxHash: verification.payment?.transactionHash,
       contractAddress: contractAddress || null,

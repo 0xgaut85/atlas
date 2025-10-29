@@ -9,6 +9,15 @@ interface TokenMarketplaceProps {
   onMintToken: (serviceId: string) => void;
 }
 
+interface TokenData {
+  totalSupply?: string;
+  totalSupplyRaw?: number;
+  maxSupply?: string;
+  verified?: boolean;
+  isX402Deployment?: boolean;
+  registeredOnPayAI?: boolean;
+}
+
 export function TokenMarketplace({ onMintToken }: TokenMarketplaceProps) {
   const router = useRouter();
   const [atlasMints, setAtlasMints] = useState<X402Service[]>([]);
@@ -19,6 +28,8 @@ export function TokenMarketplace({ onMintToken }: TokenMarketplaceProps) {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
   const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
+  const [tokenDataMap, setTokenDataMap] = useState<Record<string, TokenData>>({});
+  const [loadingTokenData, setLoadingTokenData] = useState<Record<string, boolean>>({});
 
   const networks = ['All', 'base', 'solana-mainnet'];
 
@@ -101,12 +112,95 @@ export function TokenMarketplace({ onMintToken }: TokenMarketplaceProps) {
 
       setError(null);
       setLastRefresh(new Date());
+      
+      // Fetch token data for each token
+      const allTokens = [...atlasTokens, ...uniqueTokens];
+      fetchTokenDataForTokens(allTokens);
     } catch (err) {
       console.error('Error fetching tokens:', err);
       setError('Unable to connect to token sources');
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchTokenDataForTokens = async (tokens: X402Service[]) => {
+    for (const token of tokens) {
+      if (!token.metadata?.contractAddress && !token.endpoint) continue;
+      
+      try {
+        setLoadingTokenData(prev => ({ ...prev, [token.id]: true }));
+        
+        // Extract contract address from endpoint or metadata
+        const contractAddress = token.metadata?.contractAddress || 
+          (token.endpoint.includes('/token/') ? token.endpoint.split('/token/')[1]?.split('/')[0] : null);
+        
+        if (!contractAddress) {
+          setLoadingTokenData(prev => ({ ...prev, [token.id]: false }));
+          continue;
+        }
+
+        // Fetch token data
+        const tokenDataRes = await fetch('/api/token-data', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contractAddress,
+            network: token.price?.network || 'base',
+          }),
+        });
+
+        if (tokenDataRes.ok) {
+          const tokenDataResult = await tokenDataRes.json();
+          if (tokenDataResult.success) {
+            const data = tokenDataResult.data;
+            
+            // Check if token endpoint is registered on PayAI facilitator (cortex check)
+            const isRegistered = await checkTokenRegistration(token.endpoint);
+            
+            // Check if it's an x402 deployment mint (has our endpoint pattern)
+            const isX402Deployment = token.endpoint.includes('/api/token/') && 
+              token.endpoint.includes('/mint') &&
+              (token.endpoint.includes('api.atlas402.com') || token.endpoint.includes('atlas402.com'));
+            
+            setTokenDataMap(prev => ({
+              ...prev,
+              [token.id]: {
+                ...data,
+                isX402Deployment,
+                registeredOnPayAI: isRegistered,
+              },
+            }));
+          }
+        }
+      } catch (err) {
+        console.error(`Error fetching token data for ${token.id}:`, err);
+      } finally {
+        setLoadingTokenData(prev => ({ ...prev, [token.id]: false }));
+      }
+    }
+  };
+
+  const checkTokenRegistration = async (endpoint: string): Promise<boolean> => {
+    try {
+      // Check PayAI facilitator discovery endpoint
+      const discoveryUrl = 'https://facilitator.payai.network/discovery/resources';
+      const response = await fetch(discoveryUrl);
+      
+      if (response.ok) {
+        const data = await response.json();
+        const items = data.items || [];
+        
+        // Check if endpoint is registered
+        return items.some((item: any) => 
+          item.resource === endpoint || 
+          item.resource?.includes(endpoint.replace('https://', '').replace('http://', ''))
+        );
+      }
+    } catch (err) {
+      console.error('Error checking token registration:', err);
+    }
+    return false;
   };
 
   const applyFilters = () => {
@@ -379,6 +473,78 @@ export function TokenMarketplace({ onMintToken }: TokenMarketplaceProps) {
                         )}
                       </div>
                     </div>
+
+                    {/* Mint Progress */}
+                    {(() => {
+                      const tokenData = tokenDataMap[service.id];
+                      if (tokenData && tokenData.totalSupplyRaw && tokenData.maxSupply) {
+                        const minted = tokenData.totalSupplyRaw;
+                        const maxSupply = parseFloat(tokenData.maxSupply.replace(/,/g, '')) || 0;
+                        const progressPercent = maxSupply > 0 ? Math.min(100, (minted / maxSupply) * 100) : 0;
+                        const pricePerMint = Number(service.price.amount || 0);
+                        const totalValueUSDC = minted * pricePerMint;
+                        
+                        return (
+                          <div className="mb-6 p-4 bg-gradient-to-br from-red-50 to-white border-l-4 border-red-600">
+                            <h4 className="text-xs font-bold text-black mb-3 uppercase tracking-wide">Mint Progress</h4>
+                            <div className="space-y-3">
+                              <div className="flex justify-between text-sm">
+                                <span className="text-gray-600">Minted</span>
+                                <span className="font-bold text-black">
+                                  {minted.toLocaleString()} / {tokenData.maxSupply}
+                                </span>
+                              </div>
+                              <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                                <div 
+                                  className="bg-red-600 h-full transition-all duration-500 rounded-full"
+                                  style={{ width: `${progressPercent}%` }}
+                                />
+                              </div>
+                              <div className="flex justify-between text-xs text-gray-500">
+                                <span>{progressPercent.toFixed(1)}%</span>
+                                <span>{maxSupply > 0 ? `${(maxSupply - minted).toLocaleString()} remaining` : ''}</span>
+                              </div>
+                              <div className="pt-2 border-t border-gray-200">
+                                <div className="flex justify-between text-sm">
+                                  <span className="text-gray-600">Total Value Minted</span>
+                                  <span className="font-bold text-red-600">
+                                    ${totalValueUSDC.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDC
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
+
+                    {/* x402 Deployment & Registration Status */}
+                    {(() => {
+                      const tokenData = tokenDataMap[service.id];
+                      if (tokenData) {
+                        return (
+                          <div className="mb-6 p-4 bg-gray-50 rounded border border-gray-200">
+                            <h4 className="text-xs font-bold text-black mb-3 uppercase tracking-wide">x402 Status</h4>
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between text-sm">
+                                <span className="text-gray-600">x402 Deployment</span>
+                                <span className={`font-medium ${tokenData.isX402Deployment ? 'text-green-600' : 'text-gray-400'}`}>
+                                  {tokenData.isX402Deployment ? '✓ Yes' : '✗ No'}
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-between text-sm">
+                                <span className="text-gray-600">Registered on PayAI (Cortex)</span>
+                                <span className={`font-medium ${tokenData.registeredOnPayAI ? 'text-green-600' : 'text-red-600'}`}>
+                                  {tokenData.registeredOnPayAI ? '✓ Yes' : '✗ No'}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
 
                     {/* Payment Recipient */}
                     {service.accepts && service.accepts[0]?.payTo && (

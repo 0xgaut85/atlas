@@ -14,6 +14,7 @@ interface TokenCreationFormData {
   network: 'base' | 'solana-mainnet';
   pricePerMint: string;
   deployerAddress: string;
+  devSupplyToMint?: string;
 }
 
 interface CreateTokenButtonProps {
@@ -23,6 +24,7 @@ interface CreateTokenButtonProps {
     mintEndpoint?: string;
     explorerLink?: string;
     deploymentFeeTxHash?: string;
+    deploymentFeeUSD?: number;
   }) => void;
   onError: (error: string) => void;
 }
@@ -67,6 +69,7 @@ export function CreateTokenButton({ formData, onSuccess, onError }: CreateTokenB
             network: formData.network,
             deployerAddress: formData.deployerAddress,
             contractAddress: null,
+            devSupplyToMint: formData.devSupplyToMint || '0',
           }),
         }
       );
@@ -85,6 +88,7 @@ export function CreateTokenButton({ formData, onSuccess, onError }: CreateTokenB
           mintEndpoint: result.mintEndpoint || undefined,
           explorerLink: result.explorerLink || undefined,
           deploymentFeeTxHash: result.deploymentFeeTxHash || undefined,
+          deploymentFeeUSD: result.deploymentFeeUSD || undefined,
         });
       } else {
         throw new Error(result.error || 'Token creation failed');

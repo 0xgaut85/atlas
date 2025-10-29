@@ -41,6 +41,7 @@ export default function AtlasFoundryPage() {
     website: '',
     category: 'Utility',
     logoUrl: '',
+    devSupplyToMint: '', // Supply to mint for dev address (user wallet)
   });
   const [isCreating, setIsCreating] = useState(false);
   const [createResult, setCreateResult] = useState<{ success: boolean; message: string; contractAddress?: string; mintEndpoint?: string; explorerLink?: string } | null>(null);
@@ -166,10 +167,12 @@ export default function AtlasFoundryPage() {
     mintEndpoint?: string;
     explorerLink?: string;
     deploymentFeeTxHash?: string;
+    deploymentFeeUSD?: number;
   }) => {
+    const feeAmount = result.deploymentFeeUSD || 10;
     setCreateResult({
       success: true,
-      message: 'Token deployment fee paid successfully! You can now deploy your contract.',
+      message: `You paid $${feeAmount} deployment fee. You can now mint your token.`,
       contractAddress: result.contractAddress,
       mintEndpoint: result.mintEndpoint,
       explorerLink: result.explorerLink,
@@ -186,6 +189,7 @@ export default function AtlasFoundryPage() {
       website: '',
       category: 'Utility',
       logoUrl: '',
+      devSupplyToMint: '',
     });
   };
 
@@ -504,6 +508,30 @@ export default function AtlasFoundryPage() {
                               </div>
                             </div>
 
+                            {/* Dev Settings */}
+                            {isConnected && address && (
+                              <div className="p-4 bg-gradient-to-r from-red-50 to-white border-2 border-dashed border-red-600 rounded-lg">
+                                <h4 className="text-sm font-bold text-black mb-3 uppercase tracking-wide">Dev Settings</h4>
+                                <div className="space-y-3">
+                                  <div>
+                                    <label className="block text-sm font-medium text-black mb-2">
+                                      Supply to Mint for Dev Address ({address.slice(0, 6)}...{address.slice(-4)})
+                                    </label>
+                                    <input
+                                      type="number"
+                                      value={tokenForm.devSupplyToMint}
+                                      onChange={(e) => handleFormChange('devSupplyToMint', e.target.value)}
+                                      placeholder="1000"
+                                      className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg bg-white text-black placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-600 focus:border-red-600"
+                                    />
+                                    <p className="text-xs text-gray-500 mt-1">
+                                      Amount of tokens to mint to your wallet (dev address) for testing
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
                             {/* Website & Logo */}
                             <div className="space-y-4">
                               <div>
@@ -553,6 +581,7 @@ export default function AtlasFoundryPage() {
                                 network: tokenForm.network as 'base' | 'solana-mainnet',
                                 pricePerMint: tokenForm.pricePerMint,
                                 deployerAddress: address || '',
+                                devSupplyToMint: tokenForm.devSupplyToMint,
                               }}
                               onSuccess={handleCreateTokenSuccess}
                               onError={handleCreateTokenError}
