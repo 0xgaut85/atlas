@@ -346,7 +346,8 @@ export async function listPayments(options: ListPaymentsOptions = {}): Promise<A
       console.log('🔍 Fetching payments with filters:', { userAddress, network, category, since, limit, offset });
       console.log('[atlas-tracking] DB_ENABLED:', DB_ENABLED);
       
-      const rows = await query;
+      const queryResult = await query;
+      const rows = normalizeQueryResult(queryResult);
       
       console.log(`✅ Query returned ${rows.length} rows`);
       if (rows.length > 0) {
