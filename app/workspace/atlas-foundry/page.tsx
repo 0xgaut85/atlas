@@ -10,10 +10,12 @@ import { TokenMarketplace } from '../../components/x402/TokenMarketplace';
 import { RealPaymentHandler } from '../../components/x402/RealPaymentHandler';
 import { PaymentSuccessModal } from '../../components/x402/PaymentSuccessModal';
 import { MintFeeHandler } from '../../components/x402/MintFeeHandler';
+import { CreateTokenButton } from '../../components/x402/CreateTokenButton';
 import { hasValidSession } from '@/lib/x402-session';
 import { X402Service } from '@/lib/payai-client';
 import { ManageWallet } from '../../components/ManageWallet';
 import GlitchText from '../../components/motion/GlitchText';
+import { calculateDeploymentFee } from '@/lib/cdp-agentkit';
 
 export default function AtlasFoundryPage() {
   const { address, isConnected } = useAppKitAccount();
@@ -41,7 +43,8 @@ export default function AtlasFoundryPage() {
     logoUrl: '',
   });
   const [isCreating, setIsCreating] = useState(false);
-  const [createResult, setCreateResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [createResult, setCreateResult] = useState<{ success: boolean; message: string; contractAddress?: string; mintEndpoint?: string; explorerLink?: string } | null>(null);
+  const [deploymentFee, setDeploymentFee] = useState<number | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -153,18 +156,55 @@ export default function AtlasFoundryPage() {
       return;
     }
 
-    setIsCreating(true);
-    setCreateResult(null);
-
-    // Simulate token creation (frontend only for now)
-    setTimeout(() => {
-      setCreateResult({
-        success: true,
-        message: 'Token creation will be available in November 2025. Your details have been saved for early access!'
-      });
-      setIsCreating(false);
-    }, 2000);
+    // Form validation will be handled by the CreateTokenButton component
+    // This function is now just a placeholder to prevent form submission
+    e.preventDefault();
   };
+
+  const handleCreateTokenSuccess = (result: {
+    contractAddress?: string;
+    mintEndpoint?: string;
+    explorerLink?: string;
+    deploymentFeeTxHash?: string;
+  }) => {
+    setCreateResult({
+      success: true,
+      message: 'Token deployment fee paid successfully! You can now deploy your contract.',
+      contractAddress: result.contractAddress,
+      mintEndpoint: result.mintEndpoint,
+      explorerLink: result.explorerLink,
+    });
+
+    // Reset form if successful
+    setTokenForm({
+      name: '',
+      symbol: '',
+      description: '',
+      supply: '',
+      network: 'base',
+      pricePerMint: '',
+      website: '',
+      category: 'Utility',
+      logoUrl: '',
+    });
+  };
+
+  const handleCreateTokenError = (error: string) => {
+    setCreateResult({
+      success: false,
+      message: error,
+    });
+  };
+
+  // Calculate deployment fee when supply or price changes
+  useEffect(() => {
+    if (tokenForm.supply && tokenForm.pricePerMint) {
+      const fee = calculateDeploymentFee(tokenForm.supply, tokenForm.pricePerMint);
+      setDeploymentFee(fee);
+    } else {
+      setDeploymentFee(null);
+    }
+  }, [tokenForm.supply, tokenForm.pricePerMint]);
 
   const handleFormChange = (field: string, value: string) => {
     setTokenForm(prev => ({ ...prev, [field]: value }));
@@ -298,7 +338,7 @@ export default function AtlasFoundryPage() {
                         : 'text-gray-400 hover:text-black'
                     }`}
                   >
-                    Create Token
+                    Create Mint
                     {activeTab === 'create' && (
                       <motion.div
                         layoutId="activeTab"
@@ -347,7 +387,7 @@ export default function AtlasFoundryPage() {
                         )}
 
                         <div className="bg-white border-2 border-dashed border-black p-8 rounded-lg">
-                          <h2 className="text-3xl font-bold text-black mb-6 font-title">Token Configuration</h2>
+                          <h2 className="text-3xl font-bold text-black mb-6 font-title">Mint Configuration</h2>
                           
                           <form onSubmit={handleCreateToken} className="space-y-6">
                             {/* Token Name & Symbol */}
@@ -504,17 +544,19 @@ export default function AtlasFoundryPage() {
                             )}
 
                             {/* Submit Button */}
-                            <button
-                              type="submit"
-                              disabled={!isConnected || isCreating}
-                              className={`w-full px-6 py-4 rounded-lg font-medium text-lg transition-all ${
-                                !isConnected || isCreating
-                                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                  : 'bg-red-600 text-white hover:bg-red-700 hover:shadow-lg'
-                              }`}
-                            >
-                              {isCreating ? 'Creating Token...' : 'Create & Deploy Token →'}
-                            </button>
+                            <CreateTokenButton
+                              formData={{
+                                name: tokenForm.name,
+                                symbol: tokenForm.symbol,
+                                description: tokenForm.description,
+                                supply: tokenForm.supply,
+                                network: tokenForm.network as 'base' | 'solana-mainnet',
+                                pricePerMint: tokenForm.pricePerMint,
+                                deployerAddress: address || '',
+                              }}
+                              onSuccess={handleCreateTokenSuccess}
+                              onError={handleCreateTokenError}
+                            />
                           </form>
                         </div>
                       </div>
@@ -635,18 +677,11 @@ export default function AtlasFoundryPage() {
                             <div className="flex justify-between">
                               <span className="text-gray-600">Platform Fee</span>
                               <span className="font-medium text-red-600">
-                                {(() => {
-                                  if (!tokenForm.supply || !tokenForm.pricePerMint) return '$300';
-                                  const supply = Number(tokenForm.supply);
-                                  const pricePerToken = Number(tokenForm.pricePerMint);
-                                  const onePercent = (supply * pricePerToken * 0.01);
-                                  const platformFee = Math.max(300, onePercent);
-                                  return `$${platformFee.toFixed(2)}`;
-                                })()}
+                                $10.00 USDC
                               </span>
                             </div>
                             <div className="flex justify-between text-xs text-gray-500 italic">
-                              <span>($300 minimum or 1% of supply value)</span>
+                              <span>(Fixed fee for token deployment)</span>
                               <span></span>
                             </div>
                             <div className="flex justify-between pt-2 border-t-2 border-gray-200">
@@ -654,14 +689,7 @@ export default function AtlasFoundryPage() {
                               <span className="font-bold text-red-600">
                                 {(() => {
                                   const gasFee = tokenForm.network === 'base' ? 0.10 : 0.01;
-                                  if (!tokenForm.supply || !tokenForm.pricePerMint) {
-                                    return `~$${(300 + gasFee).toFixed(2)}`;
-                                  }
-                                  const supply = Number(tokenForm.supply);
-                                  const pricePerToken = Number(tokenForm.pricePerMint);
-                                  const onePercent = (supply * pricePerToken * 0.01);
-                                  const platformFee = Math.max(300, onePercent);
-                                  return `~$${(platformFee + gasFee).toFixed(2)}`;
+                                  return `~$${(10 + gasFee).toFixed(2)}`;
                                 })()}
                               </span>
                             </div>
