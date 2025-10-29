@@ -453,17 +453,22 @@ class PayAIClient {
     
     // Tokens Category - Check FIRST before Payment (more specific)
     // Tokens are mintable assets, token contracts, token metadata services
-    if (combined.includes('token') && (
-        combined.includes('mint') || 
-        combined.includes('contract') || 
-        combined.includes('erc20') || 
-        combined.includes('spl') ||
-        combined.includes('fungible') ||
-        combined.includes('nft') ||
-        resource.includes('/token') ||
-        resource.includes('/mint') ||
-        resource.includes('/asset')
-      )) {
+    // Check multiple indicators to catch tokens even if description is minimal
+    const isTokenService = 
+      combined.includes('token') || 
+      resource.includes('/token') ||
+      resource.includes('/mint') ||
+      resource.includes('/asset') ||
+      resource.includes('/tokens') ||
+      resource.includes('/token/') ||
+      (combined.includes('mint') && (combined.includes('contract') || combined.includes('erc20') || combined.includes('spl'))) ||
+      combined.includes('erc20') ||
+      combined.includes('spl token') ||
+      combined.includes('fungible') ||
+      combined.includes('token contract') ||
+      combined.includes('token metadata');
+    
+    if (isTokenService) {
       return 'Tokens';
     }
     
