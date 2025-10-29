@@ -89,6 +89,18 @@ const nextConfig: NextConfig = {
 
   async redirects() {
     return [
+      // api.atlas402.com root redirects to info endpoint
+      {
+        source: '/',
+        has: [
+          {
+            type: 'host',
+            value: 'api.atlas402.com',
+          },
+        ],
+        destination: '/api/x402/info',
+        permanent: false,
+      },
       // Legacy redirects
       { source: '/nova-mint', destination: '/', permanent: true },
       { source: '/atlas-mint', destination: '/', permanent: true },
