@@ -5,10 +5,13 @@ import { X402_CONFIG, TOKENS } from '@/lib/x402-config';
 // Helper to fetch USDC balance from Base
 async function fetchBaseUSDCBalance(address: string): Promise<string> {
   try {
-    const rpcUrl = 'https://mainnet.base.org';
+    const rpcUrl = process.env.NEXT_PUBLIC_BASE_RPC_URL || 'https://mainnet.base.org';
     const balanceOfSignature = '0x70a08231';
     const addressParam = address.substring(2).padStart(64, '0').toLowerCase();
     const data = balanceOfSignature + addressParam;
+    
+    console.log('🔍 Fetching Base USDC balance for:', address);
+    console.log('🔍 RPC call data:', { to: TOKENS.usdcEvm, data });
     
     const response = await fetch(rpcUrl, {
       method: 'POST',
@@ -21,14 +24,31 @@ async function fetchBaseUSDCBalance(address: string): Promise<string> {
       }),
     });
     
-    const result = await response.json();
-    if (result.result && result.result !== '0x') {
-      const balance = BigInt(result.result);
-      return (Number(balance) / 1_000_000).toFixed(6);
+    if (!response.ok) {
+      console.error('❌ RPC response not OK:', response.status, response.statusText);
+      return '0.0';
     }
+    
+    const result = await response.json();
+    console.log('📊 RPC result:', result);
+    
+    if (result.error) {
+      console.error('❌ RPC error:', result.error);
+      return '0.0';
+    }
+    
+    if (result.result && result.result !== '0x' && result.result !== '0x0') {
+      const balance = BigInt(result.result);
+      const balanceUsdc = (Number(balance) / 1_000_000).toFixed(6);
+      console.log('✅ Base USDC balance:', balanceUsdc);
+      return balanceUsdc;
+    }
+    
+    console.warn('⚠️ No balance found or zero balance for Base USDC');
     return '0.0';
-  } catch (error) {
-    console.error('Error fetching Base USDC balance:', error);
+  } catch (error: any) {
+    console.error('❌ Error fetching Base USDC balance:', error);
+    console.error('❌ Error details:', error.message, error.stack);
     return '0.0';
   }
 }
