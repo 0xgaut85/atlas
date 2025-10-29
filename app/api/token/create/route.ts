@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyX402Payment, create402Response } from '../x402/middleware';
+import { verifyX402Payment, create402Response } from '../../x402/middleware';
 import { calculateDeploymentFee, verifyTokenDeployment, prepareERC20Deployment } from '@/lib/cdp-agentkit';
 import { upsertService } from '@/lib/atlas-tracking';
 import { recordPayment } from '@/lib/atlas-tracking';
