@@ -9,6 +9,7 @@ import { PaymentStatusBar } from '../../components/x402/PaymentStatusBar';
 import { TokenMarketplace } from '../../components/x402/TokenMarketplace';
 import { RealPaymentHandler } from '../../components/x402/RealPaymentHandler';
 import { PaymentSuccessModal } from '../../components/x402/PaymentSuccessModal';
+import { MintFeeHandler } from '../../components/x402/MintFeeHandler';
 import { hasValidSession } from '@/lib/x402-session';
 import { X402Service } from '@/lib/payai-client';
 import { ManageWallet } from '../../components/ManageWallet';
