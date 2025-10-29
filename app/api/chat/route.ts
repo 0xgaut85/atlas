@@ -613,29 +613,71 @@ CRITICAL RESPONSE STYLE:
       cleanedText = cleanedText.replace(/<\/?[a-z_]+>/gi, '');
       
       // Remove reasoning patterns - match paragraphs that analyze tool results
-      // Pattern 1: "The [tool] tool provides..."
-      cleanedText = cleanedText.replace(/The\s+\w+\s+tool\s+provides[\s\S]*?(?=\n\n|$)/gi, '');
+      // Pattern 1: "The [tool] tool returned/provides/listed..."
+      cleanedText = cleanedText.replace(/The\s+\w+\s+tool\s+(returned|provides|listed|found|gave|shows|includes|demonstrates)[\s\S]*?(?=\n\n|$)/gi, '');
       
-      // Pattern 2: "With over X tokens returned..."
-      cleanedText = cleanedText.replace(/With\s+over\s+\d+\s+tokens[\s\S]*?(?=\n\n|$)/gi, '');
+      // Pattern 2: "With over X tokens returned..." / "With this comprehensive..."
+      cleanedText = cleanedText.replace(/With\s+(over\s+\d+\s+tokens|this\s+\w+\s+(list|data|results|tool|catalog))[\s\S]*?(?=\n\n|$)/gi, '');
       
-      // Pattern 3: "Overall, the results..."
+      // Pattern 3: "Overall, the results..." / "Overall..."
       cleanedText = cleanedText.replace(/Overall[\s\S]*?(?=\n\n|$)/gi, '');
       
       // Pattern 4: "This would be helpful..." / "This demonstrates..." / "This gives..."
-      cleanedText = cleanedText.replace(/This\s+(would be|demonstrates|gives|includes|provides|shows)[\s\S]*?(?=\n\n|$)/gi, '');
+      cleanedText = cleanedText.replace(/This\s+(would be|demonstrates|gives|includes|provides|shows|can|will)[\s\S]*?(?=\n\n|$)/gi, '');
       
-      // Pattern 5: "The API documentation provided..."
-      cleanedText = cleanedText.replace(/The\s+API\s+documentation[\s\S]*?(?=\n\n|$)/gi, '');
+      // Pattern 5: "The API documentation provided..." / "The tool provided..."
+      cleanedText = cleanedText.replace(/The\s+(API\s+documentation|tool)\s+provided[\s\S]*?(?=\n\n|$)/gi, '');
       
-      // Pattern 6: "The list covers..." / "The results show..."
-      cleanedText = cleanedText.replace(/The\s+(list|results|data)\s+(covers|shows|includes|demonstrates)[\s\S]*?(?=\n\n|$)/gi, '');
+      // Pattern 6: "The list covers..." / "The results show..." / "The data includes..."
+      cleanedText = cleanedText.replace(/The\s+(list|results|data|catalog)\s+(covers|shows|includes|demonstrates|contains|lists)[\s\S]*?(?=\n\n|$)/gi, '');
       
-      // Pattern 7: Remove paragraphs that start with summary phrases
+      // Pattern 7: "To find [something], I'll..." / "I'll look through..." / "I'll search..."
+      cleanedText = cleanedText.replace(/To\s+\w+[\s\S]*?,\s*I'?ll[\s\S]*?(?=\n\n|$)/gi, '');
+      cleanedText = cleanedText.replace(/I'?ll\s+(look through|search|check|find|select|pick)[\s\S]*?(?=\n\n|$)/gi, '');
+      
+      // Pattern 8: "A few that stand out:" / "Some examples include:" (when followed by analysis)
+      cleanedText = cleanedText.replace(/(A few|Some|Several|Many)\s+(that|which)\s+(stand out|include|are|have)[\s\S]*?(?=\n\n(?=\d+\.|Sure|Here|Let|To|I found|You can|Happy|Let me|I can|Sure,))/gi, '');
+      
+      // Pattern 9: "The tool provided high quality results..." / "With this comprehensive token list..."
+      cleanedText = cleanedText.replace(/The\s+tool\s+provided[\s\S]*?(?=\n\n|$)/gi, '');
+      cleanedText = cleanedText.replace(/With\s+this\s+comprehensive[\s\S]*?(?=\n\n|$)/gi, '');
+      
+      // Pattern 10: "No need for additional searches..." / "This single tool call..."
+      cleanedText = cleanedText.replace(/(No need for|This single tool call|With this)[\s\S]*?(?=\n\n|$)/gi, '');
+      
+      // Pattern 11: Remove paragraphs that start with summary phrases
       cleanedText = cleanedText.replace(/^(In summary|To summarize|In conclusion|To conclude|In essence)[\s\S]*?(?=\n\n|$)/gim, '');
+      
+      // Pattern 12: Remove standalone numbers followed by reasoning (like "5" before "Sure")
+      cleanedText = cleanedText.replace(/^\d+\s*\n\n/igm, '');
+      
+      // Pattern 13: Remove paragraphs that mention analyzing or processing results
+      cleanedText = cleanedText.replace(/[^\n]*(analyzing|processing|looking through|searching through|examining|reviewing)[\s\S]*?(?=\n\n(?=\d+\.|Sure|Here|Let|To|I found|You can|Happy|Let me|I can|Sure,))/gi, '');
       
       // Trim whitespace and clean up multiple newlines
       cleanedText = cleanedText.replace(/\n{3,}/g, '\n\n').trim();
+      
+      // Final cleanup: Remove any remaining standalone reasoning paragraphs
+      // This catches any paragraph that doesn't start with a direct action/response
+      const lines = cleanedText.split('\n\n');
+      const filteredLines = lines.filter(line => {
+        const trimmed = line.trim();
+        if (!trimmed) return false;
+        
+        // Skip lines that are clearly reasoning
+        if (/^(The|To|With|This|I'?ll|No need|Overall|The tool|With this)/i.test(trimmed)) {
+          // But keep if it's a direct answer starting with "Sure" or "Here" or contains actual content
+          if (!/^(Sure|Here|Let|You can|Happy|Let me|I can)/i.test(trimmed) && 
+              !/\d+\.\s/.test(trimmed) && 
+              trimmed.length < 50) {
+            return false;
+          }
+        }
+        
+        return true;
+      });
+      
+      cleanedText = filteredLines.join('\n\n').trim();
       
       return NextResponse.json({ 
         message: cleanedText 
