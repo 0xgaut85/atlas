@@ -159,7 +159,7 @@ export function TokenMarketplace({ onMintToken }: TokenMarketplaceProps) {
       const allTokens = [...atlasTokens, ...marketplaceTokens];
       console.log(`📊 Total tokens found: ${allTokens.length}`);
       if (allTokens.length > 0) {
-        fetchTokenDataForTokens(allTokens);
+        fetchTokenDataForTokens(allTokens, atlasTokens);
       }
     } catch (err: any) {
       console.error('❌ Error fetching tokens:', err);
@@ -169,7 +169,7 @@ export function TokenMarketplace({ onMintToken }: TokenMarketplaceProps) {
     }
   };
 
-  const fetchTokenDataForTokens = async (tokens: X402Service[]) => {
+  const fetchTokenDataForTokens = async (tokens: X402Service[], atlasTokensList: X402Service[] = []) => {
     for (const token of tokens) {
       if (!token.metadata?.contractAddress && !token.endpoint) continue;
       
@@ -200,20 +200,25 @@ export function TokenMarketplace({ onMintToken }: TokenMarketplaceProps) {
           if (tokenDataResult.success) {
             const data = tokenDataResult.data;
             
-            // Check if token endpoint is registered on PayAI facilitator (cortex check)
+            // Check if token endpoint is registered on Atlas402 facilitator
             const isRegistered = await checkTokenRegistration(token.endpoint);
             
             // Check if it's an x402 deployment mint (has our endpoint pattern)
-            const isX402Deployment = token.endpoint.includes('/api/token/') && 
+            // OR if it's created via Atlas (in atlasTokensList)
+            const isAtlasMint = atlasTokensList.some(m => m.id === token.id || m.endpoint === token.endpoint);
+            const isX402Deployment = isAtlasMint || (
+              token.endpoint.includes('/api/token/') && 
               token.endpoint.includes('/mint') &&
-              (token.endpoint.includes('api.atlas402.com') || token.endpoint.includes('atlas402.com'));
+              (token.endpoint.includes('api.atlas402.com') || token.endpoint.includes('atlas402.com'))
+            );
             
             setTokenDataMap(prev => ({
               ...prev,
               [token.id]: {
                 ...data,
-                isX402Deployment,
-                registeredOnPayAI: isRegistered,
+                isX402Deployment: isX402Deployment,
+                // If created via Atlas, mark as registered on Atlas402
+                registeredOnPayAI: isAtlasMint ? true : isRegistered,
               },
             }));
           }
@@ -228,7 +233,7 @@ export function TokenMarketplace({ onMintToken }: TokenMarketplaceProps) {
 
   const checkTokenRegistration = async (endpoint: string): Promise<boolean> => {
     try {
-      // Check PayAI facilitator discovery endpoint
+      // Check Atlas402 facilitator discovery endpoint
       const discoveryUrl = 'https://facilitator.payai.network/discovery/resources';
       const response = await fetch(discoveryUrl);
       
@@ -579,7 +584,7 @@ export function TokenMarketplace({ onMintToken }: TokenMarketplaceProps) {
                                 </span>
                               </div>
                               <div className="flex items-center justify-between text-sm">
-                                <span className="text-gray-600">Registered on PayAI (Cortex)</span>
+                                <span className="text-gray-600">Registered on Atlas402</span>
                                 <span className={`font-medium ${tokenData.registeredOnPayAI ? 'text-green-600' : 'text-red-600'}`}>
                                   {tokenData.registeredOnPayAI ? '✓ Yes' : '✗ No'}
                                 </span>
