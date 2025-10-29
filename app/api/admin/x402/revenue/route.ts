@@ -117,13 +117,29 @@ export async function GET(req: NextRequest) {
       else categories.other += amount;
     });
 
-    // Get stats
+    // Get stats - calculate servicesAdded from services table
+    let servicesAdded = 0;
+    try {
+      const { listServices } = await import('@/lib/atlas-tracking');
+      const allServices = await listServices();
+      // Count services created in the time range
+      servicesAdded = allServices.filter(s => {
+        const serviceDate = s.createdAt ? new Date(s.createdAt) : new Date(0);
+        return serviceDate >= since;
+      }).length;
+      console.log(`✅ Found ${servicesAdded} services added since ${since.toISOString()}`);
+    } catch (error: any) {
+      console.error('❌ Error calculating servicesAdded:', error.message);
+    }
+
     const stats = {
       uniqueUsers: new Set(payments.map(p => p.userAddress).filter(Boolean)).size,
-      servicesAdded: 0, // Will be calculated from services table if needed
+      servicesAdded,
       since: since.toISOString(),
       sampleSize: payments.length,
     };
+    
+    console.log('📊 Stats calculated:', stats);
 
     // Fetch real USDC balances from blockchain for protocol addresses
     console.log('🔍 Fetching protocol balances...');

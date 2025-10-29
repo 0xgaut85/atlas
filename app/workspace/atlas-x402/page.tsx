@@ -274,7 +274,11 @@ export default function AtlasX402Page() {
                 <tbody>
                   {users.map((u,i)=> (
                     <tr key={i} className="border-b border-gray-100">
-                      <td className="py-2 pr-4 font-mono">{u.address}</td>
+                      <td className="py-2 pr-4 font-mono">
+                        {u.address.length > 8 
+                          ? `${u.address.slice(0, 4)}...${u.address.slice(-4)}`
+                          : u.address}
+                      </td>
                       <td className="py-2 pr-4">{u.txCount}</td>
                       <td className="py-2 pr-4">{u.total.toFixed(6)}</td>
                       <td className="py-2 pr-4">

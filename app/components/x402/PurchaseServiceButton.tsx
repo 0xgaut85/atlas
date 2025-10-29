@@ -91,9 +91,10 @@ export function PurchaseServiceButton({ service, onSuccess }: PurchaseServiceBut
   // Handle payment success
   useEffect(() => {
     if (isPaymentSuccess && paymentData) {
-      // Record payment in database as revenue
+      // Record payment in database as revenue AND record service if not already recorded
       const recordRevenue = async () => {
         try {
+          // Record payment
           await fetch('/api/admin/payment-tracker', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -114,6 +115,36 @@ export function PurchaseServiceButton({ service, onSuccess }: PurchaseServiceBut
             }),
           });
           console.log('✅ Service purchase recorded:', paymentData);
+          
+          // Also record/update service in services table so it appears in Atlas x402 Services tab
+          try {
+            await fetch('/api/admin/services', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                id: service.id,
+                name: service.name,
+                description: service.description,
+                endpoint: service.endpoint,
+                merchantAddress: service.accepts?.[0]?.payTo || payToAddress,
+                category: service.category,
+                network: service.price.network,
+                priceAmount: service.price.amount,
+                priceCurrency: service.price.currency,
+                metadata: {
+                  ...service.metadata,
+                  accepts: service.accepts,
+                  purchased: true,
+                  purchasedAt: new Date().toISOString(),
+                  purchasedBy: address,
+                },
+              }),
+            });
+            console.log('✅ Service added to services table:', service.id);
+          } catch (serviceError) {
+            console.error('Failed to record service:', serviceError);
+            // Don't fail if service recording fails
+          }
         } catch (e) {
           console.error('Failed to record service purchase:', e);
         }

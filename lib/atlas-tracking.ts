@@ -211,6 +211,17 @@ export async function listPayments(options: ListPaymentsOptions = {}): Promise<A
           LIMIT ${limit}
           OFFSET ${offset}
         `;
+      } else if (network && category && since) {
+        query = sql`
+          SELECT tx_hash, user_address, merchant_address, network, amount_micro, currency, category, service, metadata, created_at
+          FROM atlas_payments
+          WHERE network = ${network} 
+            AND category = ${category}
+            AND created_at >= ${since.toISOString()}
+          ORDER BY created_at DESC
+          LIMIT ${limit}
+          OFFSET ${offset}
+        `;
       } else if (network && category) {
         query = sql`
           SELECT tx_hash, user_address, merchant_address, network, amount_micro, currency, category, service, metadata, created_at
@@ -230,11 +241,31 @@ export async function listPayments(options: ListPaymentsOptions = {}): Promise<A
           LIMIT ${limit}
           OFFSET ${offset}
         `;
+      } else if (category && since) {
+        query = sql`
+          SELECT tx_hash, user_address, merchant_address, network, amount_micro, currency, category, service, metadata, created_at
+          FROM atlas_payments
+          WHERE category = ${category}
+            AND created_at >= ${since.toISOString()}
+          ORDER BY created_at DESC
+          LIMIT ${limit}
+          OFFSET ${offset}
+        `;
       } else if (category) {
         query = sql`
           SELECT tx_hash, user_address, merchant_address, network, amount_micro, currency, category, service, metadata, created_at
           FROM atlas_payments
           WHERE category = ${category}
+          ORDER BY created_at DESC
+          LIMIT ${limit}
+          OFFSET ${offset}
+        `;
+      } else if (network && since) {
+        query = sql`
+          SELECT tx_hash, user_address, merchant_address, network, amount_micro, currency, category, service, metadata, created_at
+          FROM atlas_payments
+          WHERE network = ${network}
+            AND created_at >= ${since.toISOString()}
           ORDER BY created_at DESC
           LIMIT ${limit}
           OFFSET ${offset}

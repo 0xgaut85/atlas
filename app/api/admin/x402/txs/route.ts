@@ -9,16 +9,26 @@ export async function GET(req: NextRequest) {
 
     console.log('🔍 Fetching transactions:', { days, since: since.toISOString() });
 
-    // Fetch all payments from tracking system
+    // Fetch all payments from tracking system (no user filter - all platform transactions)
     let payments;
     try {
       payments = await listPayments({
         since,
         limit: 10000,
       });
-      console.log(`✅ Loaded ${payments.length} payments`);
+      console.log(`✅ Loaded ${payments.length} payments from database`);
+      if (payments.length > 0) {
+        console.log('📋 Sample transaction:', {
+          txHash: payments[0].txHash,
+          userAddress: payments[0].userAddress,
+          category: payments[0].category,
+          amountMicro: payments[0].amountMicro,
+          network: payments[0].network,
+        });
+      }
     } catch (dbError: any) {
       console.error('❌ Database error:', dbError.message);
+      console.error('❌ Stack:', dbError.stack);
       payments = [];
     }
 

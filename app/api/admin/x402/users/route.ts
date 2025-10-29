@@ -9,32 +9,30 @@ export async function GET(req: NextRequest) {
 
     console.log('🔍 Fetching users:', { days, since: since.toISOString() });
 
-    // Fetch all payments and events
+    // Fetch all payments (all platform users, filtered by date)
     let payments;
-    let events;
     
     try {
       payments = await listPayments({
         since,
         limit: 10000,
       });
-      console.log(`✅ Loaded ${payments.length} payments`);
+      console.log(`✅ Loaded ${payments.length} payments from database`);
+      
+      // Log unique users found
+      const uniqueAddrs = new Set(payments.map(p => p.userAddress).filter(Boolean));
+      console.log(`📊 Found ${uniqueAddrs.size} unique users`);
+      if (uniqueAddrs.size > 0) {
+        const sampleAddrs = Array.from(uniqueAddrs).slice(0, 3);
+        console.log('📋 Sample user addresses:', sampleAddrs);
+      }
     } catch (dbError: any) {
       console.error('❌ Database error loading payments:', dbError.message);
+      console.error('❌ Stack:', dbError.stack);
       payments = [];
     }
 
-    try {
-      events = await listUserEvents({
-        limit: 10000,
-      });
-      console.log(`✅ Loaded ${events.length} events`);
-    } catch (dbError: any) {
-      console.error('❌ Database error loading events:', dbError.message);
-      events = [];
-    }
-
-    // Group by user address
+    // Group by user address (all platform users)
     const userMap = new Map<string, {
       address: string;
       txCount: number;
@@ -44,9 +42,12 @@ export async function GET(req: NextRequest) {
       networks: Set<string>;
     }>();
 
-    // Process payments
+    // Process payments - include ALL payments, not filtered by user
     payments.forEach(p => {
-      if (!p.userAddress) return;
+      if (!p.userAddress) {
+        console.warn('⚠️ Payment without userAddress:', p.txHash);
+        return;
+      }
       const addr = p.userAddress.toLowerCase();
       const amount = p.amountMicro / 1_000_000;
       const time = p.createdAt.getTime();
@@ -70,7 +71,7 @@ export async function GET(req: NextRequest) {
       user.networks.add(p.network);
     });
 
-    // Convert to array
+    // Convert to array and sort by last seen (most recent first)
     const users = Array.from(userMap.values()).map(u => ({
       address: u.address,
       txCount: u.txCount,
@@ -81,6 +82,14 @@ export async function GET(req: NextRequest) {
     })).sort((a, b) => b.lastSeen - a.lastSeen);
 
     console.log(`✅ Returning ${users.length} users`);
+    if (users.length > 0) {
+      console.log('📋 Sample user:', {
+        address: users[0].address,
+        txCount: users[0].txCount,
+        total: users[0].total,
+        networks: users[0].networks,
+      });
+    }
 
     return NextResponse.json({
       success: true,
