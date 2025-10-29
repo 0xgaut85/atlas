@@ -1,0 +1,16 @@
+# Atlas Statue Model
+
+Place your `atlas.glb` or `atlas.gltf` file in this directory.
+
+The model will be automatically loaded and displayed in the hero section.
+
+**Required:**
+- Filename: `atlas.glb` (preferred) or `atlas.gltf`
+- Format: GLB or GLTF 2.0
+- Size: < 10 MB recommended
+
+**Optional Optimization:**
+You can compress your model with Draco to reduce file size:
+https://gltf-transform.dev/
+
+
