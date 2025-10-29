@@ -84,7 +84,7 @@ export function TokenMarketplace({ onMintToken }: TokenMarketplaceProps) {
         console.log(`✅ Loaded ${atlasTokens.length} Atlas Mints from database`);
       }
 
-      // Filter marketplace tokens (from PayAI facilitator)
+      // Filter marketplace tokens (from Atlas Network facilitator)
       if (marketplaceData.success && marketplaceData.services) {
         const tokens = marketplaceData.services.filter((service: X402Service) => 
           service.category === 'Tokens'
@@ -96,7 +96,7 @@ export function TokenMarketplace({ onMintToken }: TokenMarketplaceProps) {
           !atlasEndpoints.has(token.endpoint) && !atlasIds.has(token.id)
         );
         setMarketplaceTokens(uniqueTokens);
-        console.log(`✅ Loaded ${uniqueTokens.length} marketplace tokens from PayAI`);
+        console.log(`✅ Loaded ${uniqueTokens.length} marketplace tokens from Atlas Network`);
       }
 
       setError(null);
@@ -237,7 +237,7 @@ export function TokenMarketplace({ onMintToken }: TokenMarketplaceProps) {
           <div className="flex items-center gap-4 pb-4 border-b-2 border-gray-300">
             <h3 className="text-2xl font-bold text-black font-title">Token Marketplace</h3>
             <span className="px-3 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded">
-              {filteredMarketplaceTokens.length} From PayAI Network
+              {filteredMarketplaceTokens.length} From Atlas Network
             </span>
           </div>
           {renderTokenCards(filteredMarketplaceTokens)}

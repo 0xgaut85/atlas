@@ -330,7 +330,7 @@ Atlas402 Workspace Utilities:
 CRITICAL TOKEN DISCOVERY INSTRUCTIONS:
 - When users ask about tokens, minting, or "are there tokens to mint?", you MUST use the list_tokens tool (or get_token_list tool) to fetch real-time data
 - NEVER say "no tokens available" without first using the list_tokens tool to check
-- Tokens are available via PayAI facilitator discovery - they appear in Atlas Foundry
+- Tokens are available via Atlas Network facilitator discovery - they appear in Atlas Foundry
 - Users CAN buy/mint existing tokens from Atlas Foundry right now using USDC
 - Token creation (launching new tokens) is coming November 2025, but purchasing/minting existing tokens is fully functional today
 - Always fetch live token data before answering questions about token availability
@@ -357,8 +357,8 @@ Documentation & Resources Available:
 - Facilitators: Third-party verification and settlement services
 - Deployment: Production deployment guides
 - API Reference: Technical API documentation
-- PayAI Network Documentation: https://docs.payai.network/ - Facilitator network for x402 payment verification and service discovery
-- x402scan Registration: https://www.x402scan.com/resources/register - Public scanner for x402 services, auto-registration via PayAI facilitator
+- PayAI Network Documentation: https://docs.payai.network/ - Facilitator network for x402 payment verification and service discovery (part of Atlas Network infrastructure)
+- x402scan Registration: https://www.x402scan.com/resources/register - Public scanner for x402 services, auto-registration via Atlas Network facilitator
 - Coinbase CDP Documentation: https://docs.cdp.coinbase.com/ - Blockchain infrastructure, AgentKit framework, wallet and transaction APIs
 - x402 Protocol Specification: https://x402.gitbook.io/x402 - Complete x402 protocol documentation, HTTP 402 standard, payment schemes, multi-chain support
 
@@ -432,7 +432,7 @@ CRITICAL RESPONSE STYLE:
       },
       {
         name: 'get_token_list',
-        description: 'Fetches the current list of available x402 tokens from Atlas Foundry via PayAI facilitator. Use this when users ask about tokens, mintable assets, or the token marketplace. ALWAYS use this tool when users ask "are there tokens to mint?" or "what tokens are available?"',
+        description: 'Fetches the current list of available x402 tokens from Atlas Foundry via Atlas Network facilitator. Use this when users ask about tokens, mintable assets, or the token marketplace. ALWAYS use this tool when users ask "are there tokens to mint?" or "what tokens are available?"',
         input_schema: {
           type: 'object',
           properties: {},
