@@ -52,7 +52,7 @@ export function PaymentGateModal({ pageName, pageId, isOpen, onSuccess, onClose,
         // EVM flow
         response = await makeX402Request(
           walletProvider as Provider,
-          '/api/service-hub',
+          '/api/atlas-index',
           { method: 'GET' }
         );
       } else {
@@ -159,7 +159,7 @@ export function PaymentGateModal({ pageName, pageId, isOpen, onSuccess, onClose,
           }
         })();
 
-        response = await fetch('/api/service-hub', {
+        response = await fetch('/api/atlas-index', {
           method: 'GET',
           headers: {
             'x-payment': JSON.stringify({

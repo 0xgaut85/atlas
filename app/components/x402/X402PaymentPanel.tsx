@@ -104,27 +104,19 @@ export function X402PaymentPanel({ isConnected, onConnectWallet }: X402PaymentPa
       {/* Service Access Buttons */}
       <div className="space-y-3 mb-6">
         <button
-          onClick={() => testProtectedEndpoint('/api/service-hub', 'Service Hub')}
+          onClick={() => testProtectedEndpoint('/api/atlas-index', 'Atlas Index')}
           disabled={loading}
           className="w-full px-4 py-3 bg-white hover:bg-gray-50 border-2 border-dashed border-black text-black text-sm transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Access Service Hub API
+          Access Atlas Index API
         </button>
         
         <button
-          onClick={() => testProtectedEndpoint('/api/token-indexer', 'Token Indexer')}
+          onClick={() => testProtectedEndpoint('/api/chat', 'Atlas Operator')}
           disabled={loading}
           className="w-full px-4 py-3 bg-white hover:bg-gray-50 border-2 border-dashed border-black text-black text-sm transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Access Token Indexer API
-        </button>
-        
-        <button
-          onClick={() => testProtectedEndpoint('/api/agent', 'AI Agent')}
-          disabled={loading}
-          className="w-full px-4 py-3 bg-white hover:bg-gray-50 border-2 border-dashed border-black text-black text-sm transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          Access AI Agent API
+          Access Atlas Operator API
         </button>
       </div>
 

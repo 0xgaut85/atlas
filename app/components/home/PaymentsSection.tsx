@@ -65,7 +65,7 @@ export default function PaymentsSection() {
                 <div className="flex flex-col sm:flex-row gap-4">
                   <MagneticButton>
                     <Link
-                      href="/dapp/service-hub"
+                      href="/workspace"
                       className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-all duration-300"
                     >
                       Start a Paid Session

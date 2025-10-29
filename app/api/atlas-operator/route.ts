@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     return create402Response(request, '$1.00', verification.error);
   }
 
-  // Payment verified - return agent capabilities
+  // Payment verified - return Atlas Operator capabilities
   const capabilities = [
     {
       id: 'blockchain-query',
@@ -35,12 +35,12 @@ export async function GET(request: NextRequest) {
   return Response.json({
     success: true,
     agent: {
-      name: 'Atlas402 AI Agent',
+      name: 'Atlas Operator',
       version: '1.0.0',
       capabilities,
     },
     payment: verification.payment,
-    message: 'AI Agent access granted',
+    message: 'Atlas Operator access granted',
   }, {
     headers: {
       // CORS for programmatic agent access

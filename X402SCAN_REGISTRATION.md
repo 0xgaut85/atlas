@@ -78,9 +78,9 @@ Should return:
   "merchant": "https://api.atlas402.com",
   "services": [
     {
-      "id": "service-hub",
-      "name": "Service Hub",
-      "endpoint": "https://api.atlas402.com/api/service-hub",
+      "id": "atlas-index",
+      "name": "Atlas Index",
+      "endpoint": "https://api.atlas402.com/api/atlas-index",
       "price": {
         "amount": "1.00",
         "currency": "USDC",
@@ -123,24 +123,27 @@ Should return:
 ### 3. Protected Endpoint (Should Return 402)
 
 ```bash
-curl https://api.atlas402.com/api/service-hub
+curl https://api.atlas402.com/api/atlas-index
 ```
 
 Should return HTTP 402 with payment requirements:
 ```json
 {
   "x402Version": 1,
+  "error": null,
   "accepts": [
     {
-      "scheme": "x402+eip712",
+      "scheme": "exact",
       "network": "base",
       "maxAmountRequired": "1000000",
+      "resource": "https://api.atlas402.com/api/atlas-index",
+      "description": "Payment required for /api/atlas-index",
+      "mimeType": "application/json",
       "payTo": "0x8bee703d6214a266e245b0537085b1021e1ccaed",
-      "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-      "mimeType": "application/json"
+      "maxTimeoutSeconds": 60,
+      "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
     }
-  ],
-  "error": null
+  ]
 }
 ```
 

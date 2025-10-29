@@ -25,32 +25,10 @@ export async function GET(req: NextRequest) {
       merchant: merchantUrl,
       services: [
         {
-          id: 'service-hub',
-          name: 'Service Hub',
-          description: 'Discover and access x402-powered services',
-          endpoint: `${merchantUrl}/api/service-hub`,
-          price: {
-            amount: '1.00',
-            currency: 'USDC',
-            network: 'base',
-          },
-        },
-        {
-          id: 'token-indexer',
-          name: 'Token Indexer',
-          description: 'Index and search x402-enabled tokens',
-          endpoint: `${merchantUrl}/api/token-indexer`,
-          price: {
-            amount: '1.00',
-            currency: 'USDC',
-            network: 'base',
-          },
-        },
-        {
-          id: 'agent',
-          name: 'AI Agent',
-          description: 'AI agent capabilities and tools',
-          endpoint: `${merchantUrl}/api/agent`,
+          id: 'atlas-index',
+          name: 'Atlas Index',
+          description: 'Discover and test x402 services across categories',
+          endpoint: `${merchantUrl}/api/atlas-index`,
           price: {
             amount: '1.00',
             currency: 'USDC',

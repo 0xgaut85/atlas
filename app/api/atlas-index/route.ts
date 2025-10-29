@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     return create402Response(request, '$1.00', verification.error);
   }
 
-  // Payment verified - return token indexer data
+  // Payment verified - return Atlas Index token data
   const tokens = [
     {
       address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',

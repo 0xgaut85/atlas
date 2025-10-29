@@ -77,46 +77,39 @@ export default function Navbar() {
               {hubDropdownOpen && (
                 <div className="absolute top-full left-0 mt-2 w-56 bg-white backdrop-blur-xl border border-black/10 rounded-lg shadow-xl overflow-hidden">
                   <Link
-                    href="/dapp"
+                    href="/workspace"
                     className="block px-4 py-3 text-sm font-light text-gray-700 hover:bg-gray-50 hover:text-black transition-colors border-b border-black/10"
                     onClick={() => setHubDropdownOpen(false)}
                   >
-                    Hub Home
+                    Atlas Workspace
                   </Link>
                   <Link
-                    href="/dapp/service-hub"
+                    href="/workspace/atlas-foundry"
                     className="block px-4 py-3 text-sm font-light text-gray-700 hover:bg-gray-50 hover:text-black transition-colors border-b border-black/10"
                     onClick={() => setHubDropdownOpen(false)}
                   >
-                    Service Hub
+                    Atlas Foundry
                   </Link>
                   <Link
-                    href="/dapp/token-mint"
+                    href="/workspace/atlas-index"
                     className="block px-4 py-3 text-sm font-light text-gray-700 hover:bg-gray-50 hover:text-black transition-colors border-b border-black/10"
                     onClick={() => setHubDropdownOpen(false)}
                   >
-                    Token Mint
+                    Atlas Index
                   </Link>
                   <Link
-                    href="/dapp/token-indexer"
+                    href="/workspace/atlas-mesh"
                     className="block px-4 py-3 text-sm font-light text-gray-700 hover:bg-gray-50 hover:text-black transition-colors border-b border-black/10"
                     onClick={() => setHubDropdownOpen(false)}
                   >
-                    x402 Indexer
+                    Atlas Mesh
                   </Link>
                   <Link
-                    href="/dapp/integration-layer"
-                    className="block px-4 py-3 text-sm font-light text-gray-700 hover:bg-gray-50 hover:text-black transition-colors border-b border-black/10"
-                    onClick={() => setHubDropdownOpen(false)}
-                  >
-                    Integration Layer
-                  </Link>
-                  <Link
-                    href="/dapp/agent"
+                    href="/workspace/atlas-operator"
                     className="block px-4 py-3 text-sm font-light text-gray-700 hover:bg-gray-50 hover:text-black transition-colors"
                     onClick={() => setHubDropdownOpen(false)}
                   >
-                    Atlas Native Agent
+                    Atlas Operator
                   </Link>
                 </div>
               )}
