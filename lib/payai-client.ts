@@ -446,10 +446,26 @@ class PayAIClient {
 
   /**
    * Categorize service from content
-   * Matches categories used in Atlas Index: AI, API, Data, Payment, Infrastructure, Other
+   * Matches categories used in Atlas Index: AI, API, Data, Payment, Infrastructure, Tokens, Other
    */
   private categorizeFromContent(resource: string, description?: string): string {
     const combined = `${resource} ${description || ''}`.toLowerCase();
+    
+    // Tokens Category - Check FIRST before Payment (more specific)
+    // Tokens are mintable assets, token contracts, token metadata services
+    if (combined.includes('token') && (
+        combined.includes('mint') || 
+        combined.includes('contract') || 
+        combined.includes('erc20') || 
+        combined.includes('spl') ||
+        combined.includes('fungible') ||
+        combined.includes('nft') ||
+        resource.includes('/token') ||
+        resource.includes('/mint') ||
+        resource.includes('/asset')
+      )) {
+      return 'Tokens';
+    }
     
     // AI & ML Services
     if (combined.includes('ai') || combined.includes('chat') || combined.includes('llm') || 
@@ -458,10 +474,11 @@ class PayAIClient {
       return 'AI';
     }
     
-    // Payment Services (including minting, tokens, tipping)
-    if (combined.includes('mint') || combined.includes('token') || combined.includes('airdrop') ||
+    // Payment Services (excluding tokens - minting, tipping, payment processing)
+    if ((combined.includes('mint') || combined.includes('airdrop') ||
         combined.includes('tip') || combined.includes('payment') || combined.includes('pay') ||
-        combined.includes('faucet') || combined.includes('cashback') || combined.includes('transaction')) {
+        combined.includes('faucet') || combined.includes('cashback') || combined.includes('transaction')) &&
+        !combined.includes('token')) {
       return 'Payment';
     }
     
