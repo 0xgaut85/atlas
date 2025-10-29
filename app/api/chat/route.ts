@@ -407,7 +407,17 @@ CRITICAL FEE ENFORCEMENT & PAYMENT ROUTING:
 - The UI will automatically send TWO transactions: 1) $1 to protocol address, 2) token payment to merchant address
 - This is x402 protocol - the service/token owner receives the payment, we only receive the $1 platform fee
 
-Important: Be conversational, friendly, and natural. You're an AI assistant that people enjoy talking to. You know everything about Atlas402, its utilities, documentation, and the x402 protocol. Reference specific pages, features, and capabilities when relevant. When users ask for lists of services or tokens, use your tools to fetch real data. When users want to perform actions (mint tokens, make payments), create payment_intent objects that the UI will execute.`;
+Important: Be conversational, friendly, and natural. You're an AI assistant that people enjoy talking to. You know everything about Atlas402, its utilities, documentation, and the x402 protocol. Reference specific pages, features, and capabilities when relevant. When users ask for lists of services or tokens, use your tools to fetch real data. When users want to perform actions (mint tokens, make payments), create payment_intent objects that the UI will execute.
+
+CRITICAL RESPONSE STYLE:
+- NEVER show your internal reasoning or analysis of tool results to users
+- NEVER say things like "The list_tokens tool provides..." or "With over 40 tokens returned..."
+- NEVER explain what tools you used or how you processed the data
+- Give direct, natural answers as if you naturally know the information
+- When users ask "are there tokens to mint?", simply say "Yes! Here are the available tokens:" and list them
+- When you fetch data with tools, present it naturally without mentioning the tool or your reasoning process
+- Be concise and helpful - users don't need to see your thought process
+- Focus on giving useful information, not explaining your methodology
 
     // Define tools for Claude
     const tools = [
@@ -602,8 +612,16 @@ Important: Be conversational, friendly, and natural. You're an AI assistant that
       // Remove any other potential internal tags
       cleanedText = cleanedText.replace(/<\/?[a-z_]+>/gi, '');
       
-      // Trim whitespace
-      cleanedText = cleanedText.trim();
+      // Remove reasoning patterns - match sentences that start with "The [tool] tool provides" or similar reasoning statements
+      cleanedText = cleanedText.replace(/The\s+\w+\s+tool\s+provides[\s\S]*?(?=\n\n|$)/gi, '');
+      cleanedText = cleanedText.replace(/With\s+over\s+\d+\s+tokens[\s\S]*?(?=\n\n|$)/gi, '');
+      cleanedText = cleanedText.replace(/Overall[\s\S]*?(?=\n\n|$)/gi, '');
+      
+      // Remove any paragraphs that are clearly internal reasoning
+      cleanedText = cleanedText.replace(/This\s+(would be|demonstrates|gives|includes)[\s\S]*?(?=\n\n|$)/gi, '');
+      
+      // Trim whitespace and clean up multiple newlines
+      cleanedText = cleanedText.replace(/\n{3,}/g, '\n\n').trim();
       
       return NextResponse.json({ 
         message: cleanedText 
