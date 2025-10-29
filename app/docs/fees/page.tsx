@@ -67,11 +67,11 @@ const feeCategories = [
     description: 'Fees on service revenue',
     fees: [
       {
-        name: 'Platform Fee',
-        amount: '$0.00',
+        name: 'Revenue Distribution',
+        amount: '25%',
         currency: 'USDC',
-        duration: '0%',
-        description: 'Zero platform fee - developers keep 100% of service revenue',
+        duration: 'Per service',
+        description: 'Service providers receive 25% of revenue. 25% goes to team, 50% redistributed to $ATLAS holders via buybacks.',
         networks: ['All']
       }
     ]
@@ -85,7 +85,7 @@ export default function FeesPage() {
         variant="center"
         eyebrow="Fee Structure"
         title="Transparent Pricing"
-        dek="Fixed fees with no hidden costs. Developers keep 100% of service revenue. No platform fees on transactions."
+        dek="Fixed fees with transparent revenue distribution. Service providers receive 25% of revenue, with 50% redistributed to $ATLAS holders via buybacks."
         className="mb-24"
       />
 
@@ -158,13 +158,13 @@ export default function FeesPage() {
         className="bg-red-50 border-2 border-dashed border-red-600 p-8 lg:p-12 mt-12"
       >
         <h2 className="font-title text-2xl lg:text-3xl font-bold text-black mb-4">
-          Zero Platform Fees
+          Revenue Distribution
         </h2>
         <p className="text-lg text-gray-700 mb-6">
-          Atlas402 does not take any percentage of service revenue. All payments go directly to service providers. We only charge fixed access and creation fees.
+          Atlas402 uses a transparent revenue distribution model. Service providers receive 25% of revenue. 25% goes to the Atlas402 team, and 50% is redistributed to $ATLAS token holders through buybacks and rewards.
         </p>
         <div className="bg-white p-6 border-2 border-black">
-          <div className="grid md:grid-cols-2 gap-6 text-sm">
+          <div className="grid md:grid-cols-2 gap-6 text-sm mb-6">
             <div>
               <div className="font-medium text-black mb-2">What We Charge:</div>
               <ul className="space-y-1 text-gray-600">
@@ -175,13 +175,33 @@ export default function FeesPage() {
               </ul>
             </div>
             <div>
-              <div className="font-medium text-black mb-2">What You Keep:</div>
+              <div className="font-medium text-black mb-2">Fixed Fees:</div>
               <ul className="space-y-1 text-gray-600">
-                <li>100% of service payments</li>
-                <li>100% of token mint revenue</li>
-                <li>100% of API call revenue</li>
-                <li>Zero revenue sharing</li>
+                <li>Access fees: $1.00 USDC</li>
+                <li>Token creation: $10.00 USDC</li>
+                <li>Service registration: $50.00 USDC</li>
+                <li>Transaction fees: $0.25-$1.00</li>
               </ul>
+            </div>
+          </div>
+          <div className="border-t-2 border-black pt-6">
+            <div className="font-medium text-black mb-3">Revenue Distribution on Service Payments:</div>
+            <div className="grid md:grid-cols-3 gap-4 text-sm">
+              <div className="bg-gray-50 p-4 border-2 border-dashed border-gray-300">
+                <div className="font-medium text-black mb-1">Service Providers</div>
+                <div className="text-2xl font-bold text-red-600 font-title mb-1">25%</div>
+                <div className="text-xs text-gray-600">Direct revenue share</div>
+              </div>
+              <div className="bg-gray-50 p-4 border-2 border-dashed border-gray-300">
+                <div className="font-medium text-black mb-1">Team</div>
+                <div className="text-2xl font-bold text-red-600 font-title mb-1">25%</div>
+                <div className="text-xs text-gray-600">Platform operations</div>
+              </div>
+              <div className="bg-gray-50 p-4 border-2 border-dashed border-gray-300">
+                <div className="font-medium text-black mb-1">$ATLAS Holders</div>
+                <div className="text-2xl font-bold text-red-600 font-title mb-1">50%</div>
+                <div className="text-xs text-gray-600">Buybacks & rewards</div>
+              </div>
             </div>
           </div>
         </div>

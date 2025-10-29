@@ -284,7 +284,7 @@ About Atlas402 (YOUR PROJECT):
 - Merchant addresses: Base (0x8bee703d6214a266e245b0537085b1021e1ccaed), Solana (GLrMcCztDV4Bu4TdN3NFiQmcVGHUh6LMGwkwbwLXm48N)
 - Uses PayAI facilitator (https://facilitator.payai.network) and Coinbase CDP for verification
 - Website: https://api.atlas402.com with premium design, grain texture, glitch effects
-- Platform fee: $0 - developers keep 100% of revenue
+- Revenue distribution: Service providers 25% | Team 25% | $ATLAS holders 50% via buybacks
 
 About x402 Protocol (CORE TECHNOLOGY):
 - x402 is the HTTP 402 payment protocol reimagined for blockchain - the future of API monetization

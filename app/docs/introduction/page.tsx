@@ -220,7 +220,7 @@ export default function IntroductionPage() {
                 Transform every API call into an instant micropayment
               </p>
               <p className="text-xs text-red-600">
-                Platform fee: $0 - developers keep 100% of revenue
+                Service providers: 25% revenue | Team: 25% | $ATLAS holders: 50% via buybacks
               </p>
             </div>
           </div>

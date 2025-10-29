@@ -66,7 +66,7 @@ const platformFeatures = [
     title: 'Transparent Pricing',
     content: (
       <div>
-        <p className="mb-4">Fixed fees with no hidden costs. Developers keep 100% of service revenue.</p>
+        <p className="mb-4">Fixed fees with transparent revenue distribution. Service providers receive 25% of revenue, with 50% redistributed to $ATLAS holders.</p>
         <div className="bg-gray-50 p-4 border-2 border-dashed border-gray-300 space-y-2 text-sm">
           <div className="flex justify-between">
             <span className="text-gray-600">Utility Access:</span>
@@ -81,8 +81,11 @@ const platformFeatures = [
             <span className="font-medium text-black">$50.00 USDC</span>
           </div>
           <div className="flex justify-between pt-2 border-t border-gray-300">
-            <span className="text-gray-600">Platform Fee:</span>
-            <span className="font-medium text-red-600">$0.00</span>
+            <span className="text-gray-600">Revenue Share:</span>
+            <span className="font-medium text-red-600">25% providers</span>
+          </div>
+          <div className="text-xs text-gray-500 pt-2 border-t border-gray-300">
+            <div>25% team • 50% $ATLAS holders (buybacks)</div>
           </div>
         </div>
       </div>
@@ -163,7 +166,7 @@ export default function DocsPage() {
         variant="center"
         eyebrow="Atlas402 Documentation"
         title="x402 Payment Infrastructure Platform"
-        dek="Six integrated utilities for building, managing, and monetizing x402 services. Zero platform fees. Instant settlement."
+        dek="Six integrated utilities for building, managing, and monetizing x402 services. Transparent revenue distribution. Instant settlement."
         className="mb-24"
       />
 

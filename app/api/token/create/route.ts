@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
 
     if (!verification.valid) {
       // Return 402 Payment Required
-      return create402Response(req, `$${deploymentFeeUSD.toFixed(2)}`, verification.error);
+      return create402Response(req, `$${deploymentFeeUSD.toFixed(2)}`, 'Create and deploy x402-protected tokens');
     }
 
     console.log('✅ Deployment fee verified:', {
