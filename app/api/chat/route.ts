@@ -89,16 +89,17 @@ async function getX402Services() {
 
 async function getTokenList() {
   try {
-    // Use PayAI client directly to avoid HTTP calls
-    const { payaiClient } = await import('@/lib/payai-client');
-    const result = await payaiClient.discoverServices();
+    // Use the foundry catalog endpoint which properly filters for tokens
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
+    const response = await fetch(`${baseUrl}/api/foundry/catalog`, { cache: 'no-store' });
+    const data = await response.json();
     
-    if (result.success && result.data) {
-      // Filter for tokens only
-      const tokens = result.data.filter((service: any) => service.category === 'Tokens');
-      console.log('Tokens found:', tokens.length);
-      console.log('Token names:', tokens.map((t: any) => t.name));
-      return tokens;
+    if (data.success && data.data) {
+      console.log(`✅ getTokenList found ${data.data.length} tokens`);
+      if (data.data.length > 0) {
+        console.log('📋 Sample tokens:', data.data.slice(0, 3).map((t: any) => ({ name: t.name, network: t.network })));
+      }
+      return data.data;
     }
     console.log('No tokens found in response');
     return [];
@@ -326,7 +327,13 @@ Atlas402 Workspace Utilities:
 - Atlas Operator (YOU): AI control plane with conversational interface, service discovery, and x402 expertise
 - All utilities are x402-gated: $1.00 USDC for 1-hour access on Base or Solana
 
-IMPORTANT: Users CAN buy/mint existing tokens from Atlas Foundry right now using USDC. When users ask "any tokens to mint?" use the list_tokens tool to show them available tokens they can purchase/mint. Token creation (launching new tokens) is coming November 2025, but purchasing/minting existing tokens is fully functional today.
+CRITICAL TOKEN DISCOVERY INSTRUCTIONS:
+- When users ask about tokens, minting, or "are there tokens to mint?", you MUST use the list_tokens tool (or get_token_list tool) to fetch real-time data
+- NEVER say "no tokens available" without first using the list_tokens tool to check
+- Tokens are available via PayAI facilitator discovery - they appear in Atlas Foundry
+- Users CAN buy/mint existing tokens from Atlas Foundry right now using USDC
+- Token creation (launching new tokens) is coming November 2025, but purchasing/minting existing tokens is fully functional today
+- Always fetch live token data before answering questions about token availability
 
 Technical Stack:
 - Next.js 14+ with TypeScript, React, Framer Motion
@@ -337,7 +344,8 @@ Technical Stack:
 - x402-express and x402-fetch packages for server/client
 - Anthropic Claude (you!) for AI operator
 
-Documentation Available:
+Documentation & Resources Available:
+- Atlas402 Platform Docs: Available on https://api.atlas402.com/docs
 - Introduction: Platform overview, features, usage flow, monetization guide
 - x402 Protocol: Protocol vision, request flow, core advantages, multi-chain support
 - Quick Start: Deploy first service in 5 minutes, choose Express.js or Python
@@ -349,6 +357,10 @@ Documentation Available:
 - Facilitators: Third-party verification and settlement services
 - Deployment: Production deployment guides
 - API Reference: Technical API documentation
+- PayAI Network Documentation: https://docs.payai.network/ - Facilitator network for x402 payment verification and service discovery
+- x402scan Registration: https://www.x402scan.com/resources/register - Public scanner for x402 services, auto-registration via PayAI facilitator
+- Coinbase CDP Documentation: https://docs.cdp.coinbase.com/ - Blockchain infrastructure, AgentKit framework, wallet and transaction APIs
+- x402 Protocol Specification: https://x402.gitbook.io/x402 - Complete x402 protocol documentation, HTTP 402 standard, payment schemes, multi-chain support
 
 Core Principles:
 - Usage-Based Pricing: Pay exactly for what you consume
@@ -410,7 +422,7 @@ Important: Be conversational, friendly, and natural. You're an AI assistant that
       },
       {
         name: 'get_token_list',
-        description: 'Fetches the current list of available x402 tokens from Atlas Foundry. Use this when users ask about tokens, mintable assets, or the token marketplace.',
+        description: 'Fetches the current list of available x402 tokens from Atlas Foundry via PayAI facilitator. Use this when users ask about tokens, mintable assets, or the token marketplace. ALWAYS use this tool when users ask "are there tokens to mint?" or "what tokens are available?"',
         input_schema: {
           type: 'object',
           properties: {},
@@ -463,18 +475,18 @@ Important: Be conversational, friendly, and natural. You're an AI assistant that
       },
       {
         name: 'list_tokens',
-        description: 'Fetches the complete catalog of tokens available on Atlas Foundry with pricing, network, and purchase details. Use this when users want to see available tokens, ask about specific tokens, or want to purchase/mint tokens.',
+        description: 'Fetches the complete catalog of tokens available on Atlas Foundry with pricing, network, and purchase details. Use this when users want to see available tokens, ask about specific tokens, or want to purchase/mint tokens. This is the PRIMARY tool for discovering mintable tokens. ALWAYS use this tool when users ask about tokens, minting, or what tokens are available.',
         input_schema: {
           type: 'object',
           properties: {
             network: {
               type: 'string',
-              description: 'Filter by network (base, solana-mainnet, or all)',
+              description: 'Filter by network (base, solana-mainnet, or all). Defaults to all if not specified.',
               enum: ['base', 'solana-mainnet', 'all']
             },
             category: {
               type: 'string',
-              description: 'Filter by category'
+              description: 'Filter by category (usually "Tokens" for mintable assets)'
             }
           },
           required: []
