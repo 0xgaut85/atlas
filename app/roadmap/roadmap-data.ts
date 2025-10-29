@@ -26,7 +26,7 @@ export const roadmapData: RoadmapPhase[] = [
     id: 'phase-1',
     title: 'Platform Foundation',
     description: 'Core infrastructure and utilities for x402 micropayments',
-    period: 'Q4 2024 - Q1 2025',
+    period: 'October 2025',
     items: [
       {
         id: 'base-solana',
@@ -119,7 +119,7 @@ export const roadmapData: RoadmapPhase[] = [
     id: 'phase-2',
     title: 'Ecosystem Growth',
     description: 'Expanding discovery, AI capabilities, and multi-chain support',
-    period: 'Q1 2025',
+    period: 'Q4 2025',
     items: [
       {
         id: 'atlas-index',
@@ -178,7 +178,7 @@ export const roadmapData: RoadmapPhase[] = [
     id: 'phase-3',
     title: 'Advanced Features',
     description: 'Enhanced payment models and community governance',
-    period: 'Q2-Q3 2025',
+    period: 'Q1 2026',
     items: [
       {
         id: 'advanced-payments',
@@ -222,7 +222,7 @@ export const roadmapData: RoadmapPhase[] = [
     id: 'phase-4',
     title: 'Enterprise & Scale',
     description: 'Production infrastructure and global deployment',
-    period: 'Q4 2025 & Beyond',
+    period: 'Q2 2026 & Beyond',
     items: [
       {
         id: 'enterprise',

@@ -66,7 +66,17 @@ export interface ListUserEventsOptions {
   eventType?: string;
 }
 
-const DB_ENABLED = Boolean(process.env.POSTGRES_URL);
+const DB_ENABLED = Boolean(
+  process.env.POSTGRES_URL || 
+  process.env.POSTGRES_URL_NON_POOLING || 
+  process.env.POSTGRES_URL_PRISMA
+);
+
+console.log('[atlas-tracking] Database enabled:', DB_ENABLED);
+if (DB_ENABLED) {
+  const postgresUrl = process.env.POSTGRES_URL || process.env.POSTGRES_URL_NON_POOLING || process.env.POSTGRES_URL_PRISMA;
+  console.log('[atlas-tracking] Using Postgres URL:', postgresUrl ? postgresUrl.substring(0, 20) + '...' : 'none');
+}
 
 const fallbackStore = {
   payments: new Map<string, AtlasPaymentRecord>(),
@@ -95,25 +105,43 @@ export async function recordPayment(input: PaymentInput): Promise<AtlasPaymentRe
     createdAt,
   };
 
+  console.log('[atlas-tracking] 📝 Recording payment:', {
+    txHash: record.txHash,
+    userAddress: normalizedUser,
+    merchantAddress: normalizedMerchant,
+    network: record.network,
+    amountMicro: record.amountMicro,
+    category: record.category,
+    dbEnabled: DB_ENABLED,
+  });
+
   if (DB_ENABLED) {
     await ensureDb();
-    await sql`
-      INSERT INTO atlas_payments
-        (tx_hash, user_address, merchant_address, network, amount_micro, currency, category, service, metadata, created_at)
-      VALUES
-        (${record.txHash}, ${normalizedUser}, ${normalizedMerchant}, ${record.network}, ${record.amountMicro}, ${record.currency}, ${record.category}, ${record.service ?? null}, ${record.metadata ?? null}, ${record.createdAt.toISOString()})
-      ON CONFLICT (tx_hash) DO UPDATE SET
-        user_address = EXCLUDED.user_address,
-        merchant_address = EXCLUDED.merchant_address,
-        network = EXCLUDED.network,
-        amount_micro = EXCLUDED.amount_micro,
-        currency = EXCLUDED.currency,
-        category = EXCLUDED.category,
-        service = EXCLUDED.service,
-        metadata = COALESCE(EXCLUDED.metadata, atlas_payments.metadata),
-        created_at = atlas_payments.created_at
-    `;
+    try {
+      await sql`
+        INSERT INTO atlas_payments
+          (tx_hash, user_address, merchant_address, network, amount_micro, currency, category, service, metadata, created_at)
+        VALUES
+          (${record.txHash}, ${normalizedUser}, ${normalizedMerchant}, ${record.network}, ${record.amountMicro}, ${record.currency}, ${record.category}, ${record.service ?? null}, ${record.metadata ?? null}, ${record.createdAt.toISOString()})
+        ON CONFLICT (tx_hash) DO UPDATE SET
+          user_address = EXCLUDED.user_address,
+          merchant_address = EXCLUDED.merchant_address,
+          network = EXCLUDED.network,
+          amount_micro = EXCLUDED.amount_micro,
+          currency = EXCLUDED.currency,
+          category = EXCLUDED.category,
+          service = EXCLUDED.service,
+          metadata = COALESCE(EXCLUDED.metadata, atlas_payments.metadata),
+          created_at = atlas_payments.created_at
+      `;
+      console.log('[atlas-tracking] ✅ Payment recorded in database');
+    } catch (dbError: any) {
+      console.error('[atlas-tracking] ❌ Database error recording payment:', dbError.message);
+      console.error('[atlas-tracking] Stack:', dbError.stack);
+      throw dbError; // Re-throw so caller knows it failed
+    }
   } else {
+    console.warn('[atlas-tracking] ⚠️ DB_ENABLED is false, using fallback store');
     fallbackStore.payments.set(record.txHash, record);
   }
 

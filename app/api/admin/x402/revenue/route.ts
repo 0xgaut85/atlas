@@ -78,8 +78,27 @@ export async function GET(req: NextRequest) {
         limit: 10000,
       });
       console.log(`✅ Loaded ${payments.length} payments from database`);
+      
+      // Debug: Log sample payments
+      if (payments.length > 0) {
+        console.log('📋 Sample payments:', payments.slice(0, 3).map(p => ({
+          txHash: p.txHash,
+          userAddress: p.userAddress,
+          category: p.category,
+          amountMicro: p.amountMicro,
+          network: p.network,
+        })));
+      } else {
+        console.warn('⚠️ No payments found in database!');
+        console.warn('⚠️ This could mean:');
+        console.warn('⚠️ 1. Payments are not being recorded (check POSTGRES_URL env var)');
+        console.warn('⚠️ 2. Database connection is failing');
+        console.warn('⚠️ 3. Payments table is empty');
+      }
     } catch (dbError: any) {
-      console.error('❌ Database error, using empty array:', dbError.message);
+      console.error('❌ Database error:', dbError.message);
+      console.error('❌ Stack:', dbError.stack);
+      console.error('❌ This is a critical error - payments cannot be fetched');
       payments = [];
     }
 
