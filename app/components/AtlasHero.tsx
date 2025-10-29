@@ -121,8 +121,8 @@ export default function AtlasHero({ mode = 'cubes' }: AtlasHeroProps) {
 
     console.log('AtlasHero: Background ready');
 
-    // ----- Grid geometry for particles -----
-    const GRID_W = 300, GRID_D = 200, SEG_X = 256, SEG_Z = 128;
+    // ----- Grid geometry for particles - Increased density -----
+    const GRID_W = 300, GRID_D = 200, SEG_X = 384, SEG_Z = 256;
     const gridGeo = new THREE.PlaneGeometry(GRID_W, GRID_D, SEG_X, SEG_Z);
     gridGeo.rotateX(-Math.PI / 2);
 
@@ -203,17 +203,25 @@ export default function AtlasHero({ mode = 'cubes' }: AtlasHeroProps) {
           vec3 gridPos = instancePosition;
           float t = uTime;
           
-          // Apply wave displacement
-          float n1 = snoise(vec3(gridPos.x * 0.03 + t * 0.015, gridPos.z * 0.05, t * 0.05));
-          float n2 = snoise(vec3(gridPos.x * 0.08 + 20.0, gridPos.z * 0.02 - 17.0, t * 0.09)) * 0.5;
-          float wave = sin(gridPos.x * 0.08 + t * 0.6) * 0.4 + sin(gridPos.z * 0.11 + t * 0.45) * 0.3;
+          // Apply wave displacement - More waves, faster movement
+          float n1 = snoise(vec3(gridPos.x * 0.04 + t * 0.025, gridPos.z * 0.06, t * 0.08));
+          float n2 = snoise(vec3(gridPos.x * 0.12 + 20.0, gridPos.z * 0.04 - 17.0, t * 0.15)) * 0.6;
+          float n3 = snoise(vec3(gridPos.x * 0.06 - 30.0, gridPos.z * 0.08 + 25.0, t * 0.12)) * 0.4;
+          
+          // Multiple wave layers - faster and more complex
+          float wave1 = sin(gridPos.x * 0.12 + t * 1.0) * 0.5;
+          float wave2 = sin(gridPos.z * 0.15 + t * 0.85) * 0.4;
+          float wave3 = sin((gridPos.x + gridPos.z) * 0.08 + t * 1.2) * 0.3;
+          float wave4 = cos(gridPos.x * 0.09 - gridPos.z * 0.07 + t * 0.95) * 0.35;
+          float wave = wave1 + wave2 + wave3 + wave4;
           
           float depthAtten = smoothstep(-80.0, 80.0, gridPos.z);
           float amp = mix(1.0, 0.2, depthAtten);
-          gridPos.y += (n1 + n2 + wave) * 3.0 * amp;
+          // Increased amplitude for more movement
+          gridPos.y += (n1 + n2 + n3 + wave) * 4.5 * amp;
           
-          // Apply cube vertex position with slight rotation
-          float rot = sin(t * 0.3 + instancePhase * 6.28318) * 0.3;
+          // Faster rotation with more variation
+          float rot = sin(t * 0.5 + instancePhase * 6.28318) * 0.5 + cos(t * 0.35 + instancePhase * 3.14159) * 0.2;
           mat3 rotMat = mat3(
             cos(rot), 0.0, sin(rot),
             0.0, 1.0, 0.0,
@@ -244,8 +252,8 @@ export default function AtlasHero({ mode = 'cubes' }: AtlasHeroProps) {
           vec3 lightDir = normalize(vec3(0.5, 1.0, 0.3));
           float light = dot(vNormal, lightDir) * 0.5 + 0.5;
           
-          // Twinkle effect
-          float tw = 0.78 + 0.22 * sin(uTime * 0.6 + vPhase * 6.28318);
+          // Twinkle effect - faster twinkling
+          float tw = 0.75 + 0.25 * sin(uTime * 1.0 + vPhase * 6.28318) + 0.15 * sin(uTime * 0.8 + vPhase * 3.14159);
           float att = clamp(vDepth / 240.0, 0.2, 1.0);
           
           vec3 col = uBrand * light * tw * att * 0.85;
@@ -460,8 +468,9 @@ export default function AtlasHero({ mode = 'cubes' }: AtlasHeroProps) {
       gradientUniforms.uTime.value = t;
       cubeUniforms.uTime.value = t;
       
-      // Animate grid cubes
-      nodes.position.x = Math.sin(t * 0.1) * 2.0;
+      // Animate grid cubes - faster horizontal movement with more amplitude
+      nodes.position.x = Math.sin(t * 0.2) * 3.5 + Math.cos(t * 0.15) * 1.5;
+      nodes.position.z = Math.sin(t * 0.18) * 2.0;
       
       // Animate statue (subtle rotation only - cubes already wave via shader)
       if (statueGroup) {
