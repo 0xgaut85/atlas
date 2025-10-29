@@ -12,7 +12,8 @@ const MINT_FEE_USD = 0.25;
 
 export async function POST(req: NextRequest) {
   try {
-    // Verify x402 payment for mint fee
+    // Verify x402 payment FIRST - before parsing body
+    // This ensures the endpoint always returns 402 when no payment is provided
     const verification = await verifyX402Payment(req, MINT_FEE_USD.toString());
 
     if (!verification.valid) {
@@ -26,7 +27,7 @@ export async function POST(req: NextRequest) {
       userAddress: verification.payment?.from,
     });
 
-    // Parse request body for metadata
+    // Now parse request body for metadata (after payment is verified)
     const body = await req.json().catch(() => ({}));
     const { serviceId, serviceName, tokenName } = body;
 

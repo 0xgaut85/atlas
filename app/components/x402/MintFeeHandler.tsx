@@ -54,13 +54,14 @@ export function MintFeeHandler({ network, service, onSuccess, onError }: MintFee
       );
       
       if (!x402Response.ok) {
-        throw new Error(`Mint fee payment failed: ${x402Response.status} ${x402Response.statusText}`);
+        const errorText = await x402Response.text().catch(() => 'Unknown error');
+        throw new Error(`Mint fee payment failed: ${x402Response.status} ${x402Response.statusText} - ${errorText}`);
       }
       
       const x402Data = await x402Response.json();
       setPaymentTxHash(x402Data.payment?.transactionHash || 'unknown');
       console.log('✅ Mint fee paid successfully:', x402Data);
-      
+    
       // If service endpoint is provided, make x402 call to mint the token
       if (service && service.endpoint) {
         setStep('x402');
@@ -121,8 +122,14 @@ export function MintFeeHandler({ network, service, onSuccess, onError }: MintFee
         setIsProcessing(false);
       }
     } catch (err: any) {
+      console.error('❌ Mint fee error details:', err);
       const errorMsg = err.message || 'Mint fee payment failed';
-      setError(errorMsg);
+      // Improve error message for network errors
+      if (errorMsg.includes('Failed to connect') || errorMsg.includes('fetch')) {
+        setError(`Network error: Could not connect to payment endpoint. Please try again.`);
+      } else {
+        setError(errorMsg);
+      }
       setIsProcessing(false);
       if (onError) onError(errorMsg);
     }

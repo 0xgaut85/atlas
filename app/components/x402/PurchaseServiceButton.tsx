@@ -39,28 +39,35 @@ export function PurchaseServiceButton({ service, onSuccess }: PurchaseServiceBut
       console.log('🌐 Step 1: Paying platform fee...');
       setStep('fee');
       
-      const feeResponse = await makeX402Request(
-        walletProvider,
-        '/api/x402/payment/service-payment',
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            amount: PURCHASE_FEE_USD.toString(),
-            serviceName: `Platform Fee: ${service.name}`,
-            serviceId: `fee-${service.id}`,
-            endpoint: service.endpoint,
-            category: 'service',
-            metadata: {
-              purchaseType: 'service_purchase_fee',
-              revenue: true,
-            },
-          }),
-        }
-      );
+      let feeResponse: Response;
+      try {
+        feeResponse = await makeX402Request(
+          walletProvider,
+          '/api/x402/payment/service-payment',
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              amount: PURCHASE_FEE_USD.toString(),
+              serviceName: `Platform Fee: ${service.name}`,
+              serviceId: `fee-${service.id}`,
+              endpoint: service.endpoint,
+              category: 'service',
+              metadata: {
+                purchaseType: 'service_purchase_fee',
+                revenue: true,
+              },
+            }),
+          }
+        );
+      } catch (fetchError: any) {
+        console.error('❌ Fee payment fetch error:', fetchError);
+        throw new Error(`Failed to connect to payment endpoint: ${fetchError.message}`);
+      }
 
       if (!feeResponse.ok) {
-        throw new Error(`Platform fee payment failed: ${feeResponse.status} ${feeResponse.statusText}`);
+        const errorText = await feeResponse.text().catch(() => 'Unknown error');
+        throw new Error(`Platform fee payment failed: ${feeResponse.status} ${feeResponse.statusText} - ${errorText}`);
       }
 
       const feeData = await feeResponse.json();
@@ -70,28 +77,35 @@ export function PurchaseServiceButton({ service, onSuccess }: PurchaseServiceBut
       console.log('🌐 Step 2: Paying service price...');
       setStep('service');
       
-      const serviceResponse = await makeX402Request(
-        walletProvider,
-        '/api/x402/payment/service-payment',
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            amount: servicePrice.toString(),
-            serviceName: service.name,
-            serviceId: service.id,
-            endpoint: service.endpoint,
-            category: 'service',
-            metadata: {
-              purchaseType: 'service_purchase',
-              serviceEndpoint: service.endpoint,
-            },
-          }),
-        }
-      );
+      let serviceResponse: Response;
+      try {
+        serviceResponse = await makeX402Request(
+          walletProvider,
+          '/api/x402/payment/service-payment',
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              amount: servicePrice.toString(),
+              serviceName: service.name,
+              serviceId: service.id,
+              endpoint: service.endpoint,
+              category: 'service',
+              metadata: {
+                purchaseType: 'service_purchase',
+                serviceEndpoint: service.endpoint,
+              },
+            }),
+          }
+        );
+      } catch (fetchError: any) {
+        console.error('❌ Service payment fetch error:', fetchError);
+        throw new Error(`Failed to connect to payment endpoint: ${fetchError.message}`);
+      }
 
       if (!serviceResponse.ok) {
-        throw new Error(`Service payment failed: ${serviceResponse.status} ${serviceResponse.statusText}`);
+        const errorText = await serviceResponse.text().catch(() => 'Unknown error');
+        throw new Error(`Service payment failed: ${serviceResponse.status} ${serviceResponse.statusText} - ${errorText}`);
       }
 
       const serviceData = await serviceResponse.json();

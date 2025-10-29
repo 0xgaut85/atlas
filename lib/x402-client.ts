@@ -70,57 +70,67 @@ export function createX402Client(walletProvider: any) {
   ): Promise<Response> {
     const { skipPayment, ...fetchOptions } = options;
 
-    // First attempt without payment to check if required
-    const initialResponse = await fetch(url, fetchOptions);
+    try {
+      // First attempt without payment to check if required
+      const initialResponse = await fetch(url, fetchOptions);
 
-    // If 402, payment is required
-    if (initialResponse.status === 402 && !skipPayment) {
-      console.log('Payment required, initiating USDC transfer...');
+      // If 402, payment is required
+      if (initialResponse.status === 402 && !skipPayment) {
+        console.log('Payment required, initiating USDC transfer...');
 
-      try {
-        // Parse payment requirements from 402 response
-        const paymentInfo = await initialResponse.json();
-        const accepts = paymentInfo.accepts || [];
-        
-        // Find Base payment option
-        const basePayment = accepts.find((a: any) => a.network === 'base');
-        if (!basePayment) {
-          throw new Error('Base payment option not available');
+        try {
+          // Parse payment requirements from 402 response
+          const paymentInfo = await initialResponse.json();
+          const accepts = paymentInfo.accepts || [];
+          
+          // Find Base payment option
+          const basePayment = accepts.find((a: any) => a.network === 'base');
+          if (!basePayment) {
+            throw new Error('Base payment option not available');
+          }
+
+          // Make actual USDC transfer on-chain
+          const txHash = await makeUSDCTransfer(
+            walletProvider,
+            basePayment.payTo,
+            parseInt(basePayment.maxAmountRequired),
+            'base'
+          );
+
+          console.log('USDC transfer confirmed, retrying request with payment proof...');
+
+          // Retry with payment header containing transaction hash
+          const paidResponse = await fetch(url, {
+            ...fetchOptions,
+            headers: {
+              ...fetchOptions.headers,
+              'x-payment': JSON.stringify({
+                transactionHash: txHash,
+                network: 'base',
+                amount: basePayment.maxAmountRequired,
+                currency: 'USDC',
+                payTo: basePayment.payTo,
+              }),
+            },
+          });
+
+          return paidResponse;
+        } catch (error: any) {
+          console.error('Payment failed:', error);
+          throw error;
         }
-
-        // Make actual USDC transfer on-chain
-        const txHash = await makeUSDCTransfer(
-          walletProvider,
-          basePayment.payTo,
-          parseInt(basePayment.maxAmountRequired),
-          'base'
-        );
-
-        console.log('USDC transfer confirmed, retrying request with payment proof...');
-
-        // Retry with payment header containing transaction hash
-        const paidResponse = await fetch(url, {
-          ...fetchOptions,
-          headers: {
-            ...fetchOptions.headers,
-            'x-payment': JSON.stringify({
-              transactionHash: txHash,
-              network: 'base',
-              amount: basePayment.maxAmountRequired,
-              currency: 'USDC',
-              payTo: basePayment.payTo,
-            }),
-          },
-        });
-
-        return paidResponse;
-      } catch (error: any) {
-        console.error('Payment failed:', error);
-        throw error;
       }
-    }
 
-    return initialResponse;
+      return initialResponse;
+    } catch (error: any) {
+      // Handle network errors and other fetch failures
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        console.error('Network error:', error);
+        throw new Error(`Failed to connect to ${url}. Please check your internet connection and try again.`);
+      }
+      // Re-throw other errors
+      throw error;
+    }
   };
 }
 

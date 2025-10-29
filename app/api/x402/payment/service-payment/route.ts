@@ -10,15 +10,14 @@ import { X402_CONFIG } from '@/lib/x402-config';
  */
 export async function POST(req: NextRequest) {
   try {
-    // Parse request body to get payment amount
-    const body = await req.json();
+    // Verify x402 payment FIRST - before parsing body
+    // This ensures the endpoint always returns 402 when no payment is provided
+    const body = await req.json().catch(() => ({}));
     const { amount, serviceName, serviceId, endpoint, category = 'service' } = body;
 
     if (!amount || isNaN(parseFloat(amount))) {
-      return NextResponse.json({
-        success: false,
-        error: 'Amount is required',
-      }, { status: 400 });
+      // Return 402 if amount is missing (treat as payment required)
+      return create402Response(req, '$1.00', `Payment for ${serviceName || 'service'}`, ['base']);
     }
 
     const paymentAmount = parseFloat(amount);
