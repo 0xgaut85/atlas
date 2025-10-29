@@ -39,8 +39,8 @@ const anthropic = ANTHROPIC_API_KEY ? new Anthropic({
   apiKey: ANTHROPIC_API_KEY.trim(), // Trim any whitespace that might cause issues
 }) : null;
 
-// Use only claude-3-opus-20240229
-const MODEL_CANDIDATES: string[] = ['claude-3-opus-20240229'];
+// Use latest Claude models (claude-3-opus-20240229 is deprecated, migrating to claude-3-5-opus)
+const MODEL_CANDIDATES: string[] = ['claude-3-5-opus-20241022', 'claude-3-5-sonnet-20241022', 'claude-3-opus-20240229'];
 
 async function createWithFallback(client: Anthropic, params: any) {
   let lastErr: any = null;
@@ -181,18 +181,24 @@ async function listTokens(network?: string, category?: string) {
 }
 
 export async function POST(req: NextRequest) {
+  // Load API key fresh from Vercel environment variables at request time
+  // This ensures we get the latest value even if cached at module load
+  // IMPORTANT: In Vercel, environment variables are available via process.env
+  // Check both ANTHROPIC_API_KEY and ANTHROPIC_API_KEY_VERCEL (if using Vercel-specific naming)
+  const apiKey = (process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY_VERCEL || '').trim();
+  
   try {
-    // Load API key fresh from Vercel environment variables at request time
-    // This ensures we get the latest value even if cached at module load
-    const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
     
     console.log('🔍 POST Request Debug:', {
       hasApiKey: !!apiKey,
-      keyPrefix: apiKey ? apiKey.substring(0, 12) + '...' : 'MISSING',
+      keyPrefix: apiKey ? apiKey.substring(0, 15) + '...' : 'MISSING',
+      keyEndsWith: apiKey ? '...' + apiKey.substring(apiKey.length - 5) : 'MISSING',
       keyLength: apiKey?.length || 0,
       isValidFormat: apiKey?.startsWith('sk-ant-') || false,
       isVercel: !!process.env.VERCEL,
-      nodeEnv: process.env.NODE_ENV
+      nodeEnv: process.env.NODE_ENV,
+      vercelEnv: process.env.VERCEL_ENV,
+      allAnthropicKeys: Object.keys(process.env).filter(k => k.toUpperCase().includes('ANTHROPIC')).join(', ')
     });
 
     // Verify that Vercel environment variables are loaded
@@ -229,8 +235,17 @@ export async function POST(req: NextRequest) {
     }
 
     // Initialize Anthropic client with fresh API key from Vercel
+    // Log key details for debugging (first 15 chars only for security)
+    console.log('🔑 Initializing Anthropic client:', {
+      keyLength: apiKey.length,
+      keyPrefix: apiKey.substring(0, 15) + '...',
+      keyEndsWith: '...' + apiKey.substring(apiKey.length - 5),
+      hasWhitespace: /\s/.test(apiKey),
+      trimmedLength: apiKey.trim().length,
+    });
+
     const anthropicClient = new Anthropic({
-      apiKey: apiKey,
+      apiKey: apiKey.trim(), // Ensure no whitespace
     });
 
     const { messages } = await req.json();
