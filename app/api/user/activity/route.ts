@@ -53,7 +53,23 @@ export async function GET(req: NextRequest) {
             userAddress: evmPayments[0].userAddress,
             category: evmPayments[0].category,
             amountMicro: evmPayments[0].amountMicro,
+            network: evmPayments[0].network,
           });
+        } else {
+          // Try without user filter to see all payments
+          console.log('⚠️ No payments found for user, checking all payments...');
+          const allPayments = await listPayments({ limit: 5 });
+          console.log(`📊 Total payments in DB (sample):`, allPayments.length);
+          if (allPayments.length > 0) {
+            console.log('📋 Sample payment from DB:', {
+              txHash: allPayments[0].txHash,
+              userAddress: allPayments[0].userAddress,
+              category: allPayments[0].category,
+              network: allPayments[0].network,
+              expectedAddress: userAddress,
+              match: allPayments[0].userAddress?.toLowerCase() === userAddress,
+            });
+          }
         }
         payments.push(...evmPayments);
       } catch (dbError: any) {
@@ -73,25 +89,6 @@ export async function GET(req: NextRequest) {
         payments.push(...solPayments);
       } catch (dbError: any) {
         console.error('❌ Database error loading Solana payments:', dbError.message);
-      }
-    }
-    
-    // Also try fetching ALL payments without filter to debug
-    if (payments.length === 0) {
-      console.log('⚠️ No payments found for user addresses, checking total payments in DB...');
-      try {
-        const allPayments = await listPayments({ limit: 10 });
-        console.log(`📊 Total payments in DB (sample):`, allPayments.length);
-        if (allPayments.length > 0) {
-          console.log('📋 Sample payment from DB:', {
-            txHash: allPayments[0].txHash,
-            userAddress: allPayments[0].userAddress,
-            category: allPayments[0].category,
-            network: allPayments[0].network,
-          });
-        }
-      } catch (e) {
-        console.error('Error checking total payments:', e);
       }
     }
 
