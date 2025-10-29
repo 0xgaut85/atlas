@@ -417,7 +417,7 @@ CRITICAL RESPONSE STYLE:
 - When users ask "are there tokens to mint?", simply say "Yes! Here are the available tokens:" and list them
 - When you fetch data with tools, present it naturally without mentioning the tool or your reasoning process
 - Be concise and helpful - users don't need to see your thought process
-- Focus on giving useful information, not explaining your methodology
+- Focus on giving useful information, not explaining your methodology`;
 
     // Define tools for Claude
     const tools = [
