@@ -38,7 +38,7 @@ export default function IndexDocsPage() {
         variant="left"
         eyebrow="Atlas Index"
         title="Service Discovery & Testing"
-        dek="Discover and test x402 services across categories. Filter by network, category, and price. Real-time service discovery from PayAI facilitator.'
+        dek="Discover and test x402 services across categories. Filter by network, category, and price. Real-time service discovery from PayAI facilitator."
         className="mb-24"
       />
 
