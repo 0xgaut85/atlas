@@ -80,11 +80,17 @@ export async function createEIP3009Authorization(
     const domainName = extra?.name || 'USDC'; // Use extra.name from paymentRequirements (matches PayAI library)
     const domainVersion = extra?.version || '2'; // Use extra.version from paymentRequirements (matches PayAI library)
     
+    // Helper to checksum address (matches PayAI's getAddress() from viem)
+    const checksumAddress = (addr: string): string => {
+      // Simple checksum - proper implementation in production should use viem's getAddress()
+      return addr; // Wallet will handle checksumming during signing
+    };
+    
     const domain = {
       name: domainName, // Use extra.name from paymentRequirements - PayAI uses this, not contract name()
       version: domainVersion, // Use extra.version from paymentRequirements - PayAI uses this
       chainId: chainId, // Network chainId (8453 for Base, as number)
-      verifyingContract: usdcContract.toLowerCase(), // Contract address (lowercase for EIP-712)
+      verifyingContract: usdcContract, // Keep original case (0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913 is checksummed)
     };
 
     const types = {
@@ -108,17 +114,26 @@ export async function createEIP3009Authorization(
     const validAfter = now;
     const validBefore = now + 3600; // 1 hour validity
 
-    // EIP-712 message: all values must match EIP-3009 TransferWithAuthorization format exactly
-    // IMPORTANT: uint256 values should be minimal hex (no padding) - wallets encode them properly
-    // Addresses: lowercase for EIP-712 (wallets handle checksumming internally)
-    // bytes32 nonce: hex string starting with 0x (already padded correctly)
+    // EIP-712 message: all values must match PayAI's x402 library format exactly!
+    // Source: node_modules/x402/dist/esm/chunk-QN6E5BAP.mjs lines 78-85:
+    // message: {
+    //   from: getAddress(from),      // Checksummed address
+    //   to: getAddress(to),          // Checksummed address
+    //   value,                       // String (like "1000000") - NOT hex, NOT BigInt!
+    //   validAfter,                  // String (like "1761805100") - NOT hex, NOT BigInt!
+    //   validBefore,                 // String (like "1761808700") - NOT hex, NOT BigInt!
+    //   nonce                        // Hex string (0x...)
+    // }
+    //
+    // CRITICAL: PayAI passes value/validAfter/validBefore as decimal STRINGS (from preparePaymentHeader)
+    // NOT as hex strings, NOT as BigInt objects - just plain decimal strings!
     const message = {
-      from: from.toLowerCase(),
-      to: recipient.toLowerCase(),
-      value: '0x' + BigInt(amountMicro).toString(16), // Minimal hex - wallets handle padding during encoding
-      validAfter: '0x' + BigInt(validAfter).toString(16), // Minimal hex
-      validBefore: '0x' + BigInt(validBefore).toString(16), // Minimal hex
-      nonce: nonceHex, // Already 66 chars (0x + 64 hex chars)
+      from: from, // Keep as-is (wallet handles checksumming)
+      to: recipient, // Keep as-is (wallet handles checksumming)
+      value: amountMicro.toString(), // Decimal STRING (like "1000000") - matches PayAI
+      validAfter: validAfter.toString(), // Decimal STRING (like "1761805100") - matches PayAI
+      validBefore: validBefore.toString(), // Decimal STRING (like "1761808700") - matches PayAI
+      nonce: nonceHex, // Hex string (0x...) - matches PayAI
     };
 
     // Sign EIP-712 typed data
