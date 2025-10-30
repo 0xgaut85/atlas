@@ -34,11 +34,15 @@ export async function createEIP3009Authorization(
     
     // EIP-3009 TransferWithAuthorization domain separator and types
     // USDC contract uses EIP-712 for transferWithAuthorization
+    // Base USDC (0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913) uses:
+    // - name: "USD Coin" (verified on Base)
+    // - version: "2"
+    // - chainId: 8453 for Base
     const domain = {
-      name: 'USD Coin',
-      version: '2',
-      chainId: chainId,
-      verifyingContract: usdcContract,
+      name: 'USD Coin', // USDC contract name on Base
+      version: '2', // USDC contract version
+      chainId: chainId, // 8453 for Base mainnet
+      verifyingContract: usdcContract.toLowerCase(), // Ensure lowercase for consistency
     };
 
     const types = {
