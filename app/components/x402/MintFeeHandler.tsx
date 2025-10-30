@@ -62,15 +62,27 @@ export function MintFeeHandler({ network, service, onSuccess, onError }: MintFee
       setPaymentTxHash(x402Data.payment?.transactionHash || 'unknown');
       console.log('✅ Mint fee paid successfully:', x402Data);
     
-      // If service endpoint is provided, make x402 call to mint the token
-      if (service && service.endpoint) {
+      // If service is provided, make x402 call to mint the token using YOUR OWN API endpoint
+      if (service && service.id) {
         setStep('x402');
         
         try {
-          console.log('🌐 Making x402 payment call to token mint endpoint:', service.endpoint);
+          // Extract contract address from service ID (format: "token-{contractAddress}")
+          // For tokens in Foundry, always use your own mint endpoint
+          const contractAddress = service.id.startsWith('token-') 
+            ? service.id.replace('token-', '')
+            : service.metadata?.contractAddress || service.endpoint?.match(/token\/(0x[a-fA-F0-9]{40}|[1-9A-HJ-NP-Za-km-z]{32,44})/)?.[1];
+          
+          if (!contractAddress) {
+            throw new Error('Could not determine contract address for token mint');
+          }
+          
+          // Use YOUR OWN mint endpoint, not the external service endpoint
+          const mintEndpoint = `/api/token/${contractAddress}/mint`;
+          console.log('🌐 Making x402 payment call to token mint endpoint:', mintEndpoint);
           const mintResponse = await makeX402Request(
             walletProvider,
-            service.endpoint,
+            mintEndpoint,
             { method: 'GET' }
           );
           
@@ -97,7 +109,9 @@ export function MintFeeHandler({ network, service, onSuccess, onError }: MintFee
                 metadata: {
                   tokenName: service.name,
                   serviceId: service.id,
-                  endpoint: service.endpoint,
+                  endpoint: mintEndpoint, // Use your own endpoint, not external
+                  contractAddress: contractAddress,
+                  originalEndpoint: service.endpoint, // Keep original for reference
                   txHash: paymentTxHash,
                   x402PaymentCompleted: true,
                 },
