@@ -68,15 +68,18 @@ export async function createEIP3009Authorization(
     // EIP-3009 TransferWithAuthorization domain separator and types
     // CRITICAL: Domain values MUST match exactly what Base USDC contract uses for EIP-712
     // Base USDC (0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913) EIP-712 domain separator:
-    // - name: "USD Coin" (verified on BaseScan - this is the contract's name() return value)
+    // IMPORTANT: Try "USDC" first (PayAI's extra field uses this), fallback to "USD Coin" if needed
+    // - name: Contract name - may be "USDC" or "USD Coin" (need to verify via contract call)
     // - version: "2" (EIP-3009 standard version, always "2" for USDC)
     // - chainId: 8453 (Base mainnet chainId, as number not string)
-    // - verifyingContract: Contract address (must match contract exactly - use original case)
+    // - verifyingContract: Contract address (lowercase for EIP-712)
     //
     // PayAI facilitator validates signatures against the contract's DOMAIN_SEPARATOR
     // Any mismatch in these values will cause invalid_exact_evm_payload_signature error
+    // 
+    // Note: PayAI's paymentRequirements.extra shows "name": "USDC", suggesting domain name might be "USDC"
     const domain = {
-      name: 'USD Coin', // Base USDC contract name (verified)
+      name: 'USDC', // Try "USDC" first (matches PayAI's extra field) - Base USDC may use this instead of "USD Coin"
       version: '2', // EIP-3009 version (always "2" for USDC)
       chainId: chainId, // Network chainId (8453 for Base, as number)
       verifyingContract: usdcContract.toLowerCase(), // Contract address (lowercase for EIP-712 - wallets normalize)
@@ -104,15 +107,15 @@ export async function createEIP3009Authorization(
     const validBefore = now + 3600; // 1 hour validity
 
     // EIP-712 message: all values must match EIP-3009 TransferWithAuthorization format exactly
+    // IMPORTANT: uint256 values should be minimal hex (no padding) - wallets encode them properly
     // Addresses: lowercase for EIP-712 (wallets handle checksumming internally)
-    // uint256 values: hex strings, zero-padded to 64 characters (without 0x prefix in padding)
-    // bytes32 nonce: hex string starting with 0x
+    // bytes32 nonce: hex string starting with 0x (already padded correctly)
     const message = {
       from: from.toLowerCase(),
       to: recipient.toLowerCase(),
-      value: '0x' + BigInt(amountMicro).toString(16).padStart(64, '0'), // Pad to 64 hex chars (32 bytes)
-      validAfter: '0x' + BigInt(validAfter).toString(16).padStart(64, '0'), // Pad to 64 hex chars
-      validBefore: '0x' + BigInt(validBefore).toString(16).padStart(64, '0'), // Pad to 64 hex chars
+      value: '0x' + BigInt(amountMicro).toString(16), // Minimal hex - wallets handle padding during encoding
+      validAfter: '0x' + BigInt(validAfter).toString(16), // Minimal hex
+      validBefore: '0x' + BigInt(validBefore).toString(16), // Minimal hex
       nonce: nonceHex, // Already 66 chars (0x + 64 hex chars)
     };
 
