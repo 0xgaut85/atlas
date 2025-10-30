@@ -216,8 +216,8 @@ class PayAIClient {
         scheme: 'exact',
         network: paymentData.network,
         maxAmountRequired: String(paymentData.expectedAmount),
-        payTo: paymentData.expectedRecipient?.toLowerCase(),
-        asset: paymentData.tokenAddress?.toLowerCase(),
+        payTo: paymentData.expectedRecipient, // Keep checksummed (matches PayAI format)
+        asset: paymentData.tokenAddress, // Keep checksummed (matches PayAI format)
         resource: paymentData.resource || 'https://api.atlas402.com',
         description: paymentData.description || 'Payment verification',
         mimeType: 'application/json',
