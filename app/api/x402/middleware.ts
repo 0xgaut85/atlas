@@ -28,14 +28,37 @@ export async function verifyX402Payment(
   try {
     // Parse payment header (may be base64 encoded or plain JSON)
     let payment: any;
+    let parseMethod = 'unknown';
     try {
       // Try parsing as base64 first (EIP-3009 format)
       const decoded = Buffer.from(paymentHeader, 'base64').toString('utf-8');
       payment = JSON.parse(decoded);
-    } catch {
-      // Fallback to plain JSON (legacy transactionHash format)
-      payment = JSON.parse(paymentHeader);
+      parseMethod = 'base64';
+      console.log('✅ Payment header parsed as base64');
+    } catch (base64Error) {
+      try {
+        // Fallback to plain JSON (legacy transactionHash format)
+        payment = JSON.parse(paymentHeader);
+        parseMethod = 'plain-json';
+        console.log('✅ Payment header parsed as plain JSON');
+      } catch (jsonError) {
+        console.error('❌ Failed to parse payment header:', {
+          base64Error: base64Error instanceof Error ? base64Error.message : 'Unknown',
+          jsonError: jsonError instanceof Error ? jsonError.message : 'Unknown',
+          headerLength: paymentHeader.length,
+          headerPreview: paymentHeader.substring(0, 100),
+        });
+        throw new Error('Invalid payment header format');
+      }
     }
+    
+    console.log('📥 Payment header parsed successfully:', {
+      method: parseMethod,
+      hasPayload: !!payment.payload,
+      hasSignature: !!payment.payload?.signature,
+      hasAuthorization: !!payment.payload?.authorization,
+      hasTransactionHash: !!payment.transactionHash || !!payment.payload?.transactionHash,
+    });
 
     // Determine network and expected recipient
     const network: 'base' | 'solana-mainnet' = payment.network || X402_CONFIG.network;

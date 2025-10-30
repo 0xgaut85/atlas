@@ -72,15 +72,36 @@ export async function createEIP3009Authorization(
     };
 
     // Sign EIP-712 typed data
-    const signature = await walletProvider.request({
-      method: 'eth_signTypedData_v4',
-      params: [from, JSON.stringify({
-        types,
-        domain,
-        primaryType: 'TransferWithAuthorization',
-        message,
-      })],
-    });
+    console.log('📝 Requesting EIP-712 signature from wallet...');
+    console.log('📋 Domain:', domain);
+    console.log('📋 Message:', message);
+    
+    let signature: string;
+    try {
+      signature = await walletProvider.request({
+        method: 'eth_signTypedData_v4',
+        params: [from, JSON.stringify({
+          types,
+          domain,
+          primaryType: 'TransferWithAuthorization',
+          message,
+        })],
+      });
+      
+      if (!signature || signature.length < 130) {
+        throw new Error('Invalid signature received from wallet');
+      }
+    } catch (sigError: any) {
+      console.error('❌ Signature request failed:', sigError);
+      // Check for common rejection patterns
+      if (sigError.message?.includes('rejected') || 
+          sigError.message?.includes('denied') ||
+          sigError.code === 4001 || // MetaMask user rejection
+          sigError.code === 'ACTION_REJECTED') {
+        throw new Error('User rejected the signature request. Please approve to continue.');
+      }
+      throw new Error(`Signature failed: ${sigError.message || 'Unknown error'}`);
+    }
 
     console.log('✅ EIP-3009 authorization signature created');
 
@@ -167,11 +188,12 @@ export function createX402Client(walletProvider: any) {
 
       // If 402, payment is required
       if (initialResponse.status === 402 && !skipPayment) {
-        console.log('Payment required, creating EIP-3009 authorization...');
+        console.log('💳 Payment required, creating EIP-3009 authorization...');
 
         try {
           // Parse payment requirements from 402 response
           const paymentInfo = await initialResponse.json();
+          console.log('📋 Payment requirements:', paymentInfo);
           const accepts = paymentInfo.accepts || [];
           
           // Find Base payment option
@@ -179,6 +201,12 @@ export function createX402Client(walletProvider: any) {
           if (!basePayment) {
             throw new Error('Base payment option not available');
           }
+
+          console.log('💰 Creating authorization for:', {
+            amount: basePayment.maxAmountRequired,
+            recipient: basePayment.payTo,
+            network: 'base',
+          });
 
           // Create EIP-3009 authorization signature (PayAI facilitator compatible)
           const { signature, authorization } = await createEIP3009Authorization(
@@ -188,7 +216,14 @@ export function createX402Client(walletProvider: any) {
             'base'
           );
 
-          console.log('✅ EIP-3009 authorization created, sending to server...');
+          console.log('✅ EIP-3009 authorization created:', {
+            signature: signature.substring(0, 20) + '...',
+            authorization: {
+              from: authorization.from,
+              to: authorization.to,
+              value: authorization.value,
+            },
+          });
 
           // Create payment payload in PayAI facilitator format
           const paymentPayload = {
@@ -203,9 +238,17 @@ export function createX402Client(walletProvider: any) {
 
           // Base64 encode payment payload (as per x402 standard)
           // Use browser-compatible base64 encoding
-          const paymentHeaderB64 = btoa(JSON.stringify(paymentPayload));
+          let paymentHeaderB64: string;
+          try {
+            paymentHeaderB64 = btoa(JSON.stringify(paymentPayload));
+            console.log('✅ Payment payload base64 encoded, length:', paymentHeaderB64.length);
+          } catch (b64Error: any) {
+            console.error('❌ Base64 encoding failed:', b64Error);
+            throw new Error(`Failed to encode payment: ${b64Error.message}`);
+          }
 
           // Retry with payment header containing EIP-3009 authorization
+          console.log('🔄 Retrying request with EIP-3009 authorization...');
           const paidResponse = await fetch(url, {
             ...fetchOptions,
             headers: {
@@ -214,10 +257,24 @@ export function createX402Client(walletProvider: any) {
             },
           });
 
+          console.log('📨 Retry response status:', paidResponse.status);
+
+          // If still 402, log detailed error
+          if (paidResponse.status === 402) {
+            const errorInfo = await paidResponse.json().catch(() => ({}));
+            console.error('❌ Server still returned 402 after sending authorization:', errorInfo);
+            console.error('📤 Payment header sent (first 100 chars):', paymentHeaderB64.substring(0, 100));
+            console.error('📦 Full payment payload:', JSON.stringify(paymentPayload, null, 2));
+          }
+
           return paidResponse;
         } catch (error: any) {
-          console.error('Payment failed:', error);
-          throw error;
+          console.error('❌ Payment authorization failed:', error);
+          // If authorization creation failed (user rejected), throw clear error
+          if (error.message?.includes('User rejected') || error.message?.includes('rejected')) {
+            throw new Error('Payment authorization was rejected. Please try again and approve the signature request.');
+          }
+          throw new Error(`Payment failed: ${error.message || 'Unknown error'}`);
         }
       }
 
