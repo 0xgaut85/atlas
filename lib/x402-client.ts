@@ -1,5 +1,6 @@
 import { X402_CONFIG, PAYMENT_CONFIG, TOKENS } from './x402-config';
 import type { Provider } from '@reown/appkit-adapter-wagmi';
+import { getAddress } from 'viem';
 
 export interface X402FetchOptions extends RequestInit {
   skipPayment?: boolean;
@@ -80,17 +81,14 @@ export async function createEIP3009Authorization(
     const domainName = extra?.name || 'USDC'; // Use extra.name from paymentRequirements (matches PayAI library)
     const domainVersion = extra?.version || '2'; // Use extra.version from paymentRequirements (matches PayAI library)
     
-    // Helper to checksum address (matches PayAI's getAddress() from viem)
-    const checksumAddress = (addr: string): string => {
-      // Simple checksum - proper implementation in production should use viem's getAddress()
-      return addr; // Wallet will handle checksumming during signing
-    };
+    // Use viem's getAddress() to checksum addresses (exactly like PayAI's library)
+    // This ensures addresses match PayAI's format for EIP-712 signature validation
     
     const domain = {
       name: domainName, // Use extra.name from paymentRequirements - PayAI uses this, not contract name()
       version: domainVersion, // Use extra.version from paymentRequirements - PayAI uses this
       chainId: chainId, // Network chainId (8453 for Base, as number)
-      verifyingContract: usdcContract, // Keep original case (0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913 is checksummed)
+      verifyingContract: getAddress(usdcContract), // Checksum with viem's getAddress() (matches PayAI exactly)
     };
 
     const types = {
@@ -117,19 +115,18 @@ export async function createEIP3009Authorization(
     // EIP-712 message: all values must match PayAI's x402 library format exactly!
     // Source: node_modules/x402/dist/esm/chunk-QN6E5BAP.mjs lines 78-85:
     // message: {
-    //   from: getAddress(from),      // Checksummed address
-    //   to: getAddress(to),          // Checksummed address
-    //   value,                       // String (like "1000000") - NOT hex, NOT BigInt!
-    //   validAfter,                  // String (like "1761805100") - NOT hex, NOT BigInt!
-    //   validBefore,                 // String (like "1761808700") - NOT hex, NOT BigInt!
+    //   from: getAddress(from),      // Checksummed address (PayAI uses viem's getAddress)
+    //   to: getAddress(to),          // Checksummed address (PayAI uses viem's getAddress)
+    //   value,                       // String (like "1000000") - decimal string
+    //   validAfter,                  // String (like "1761805100") - decimal string
+    //   validBefore,                 // String (like "1761808700") - decimal string
     //   nonce                        // Hex string (0x...)
     // }
     //
-    // CRITICAL: PayAI passes value/validAfter/validBefore as decimal STRINGS (from preparePaymentHeader)
-    // NOT as hex strings, NOT as BigInt objects - just plain decimal strings!
+    // CRITICAL: PayAI checksums addresses with viem's getAddress() and uses decimal strings for uint256!
     const message = {
-      from: from, // Keep as-is (wallet handles checksumming)
-      to: recipient, // Keep as-is (wallet handles checksumming)
+      from: getAddress(from), // Checksum with viem's getAddress() (exactly like PayAI)
+      to: getAddress(recipient), // Checksum with viem's getAddress() (exactly like PayAI)
       value: amountMicro.toString(), // Decimal STRING (like "1000000") - matches PayAI
       validAfter: validAfter.toString(), // Decimal STRING (like "1761805100") - matches PayAI
       validBefore: validBefore.toString(), // Decimal STRING (like "1761808700") - matches PayAI
