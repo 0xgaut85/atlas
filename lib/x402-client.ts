@@ -62,12 +62,18 @@ export async function createEIP3009Authorization(
     const validAfter = now;
     const validBefore = now + 3600; // 1 hour validity
 
+    // EIP-712 message: uint256 values must be hex strings, properly padded
+    // Convert numbers to hex with proper padding for uint256 (64 hex chars = 32 bytes)
+    const valueHex = '0x' + BigInt(amountMicro).toString(16).padStart(64, '0');
+    const validAfterHex = '0x' + BigInt(validAfter).toString(16).padStart(64, '0');
+    const validBeforeHex = '0x' + BigInt(validBefore).toString(16).padStart(64, '0');
+    
     const message = {
       from: from.toLowerCase(),
       to: recipient.toLowerCase(),
-      value: '0x' + amountMicro.toString(16),
-      validAfter: '0x' + validAfter.toString(16),
-      validBefore: '0x' + validBefore.toString(16),
+      value: valueHex,
+      validAfter: validAfterHex,
+      validBefore: validBeforeHex,
       nonce: nonceHex,
     };
 
