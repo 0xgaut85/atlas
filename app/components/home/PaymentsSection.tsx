@@ -110,9 +110,9 @@ export default function PaymentsSection() {
                   </div>
                   <div className="text-gray-600">per API request</div>
                   <div className="mt-4 pt-4 border-t border-gray-200">
-                    <div className="text-sm text-gray-600">
+                  <div className="text-sm text-gray-600">
+                      • Pay-per-request pricing<br />
                       • Instant settlement<br />
-                      • No minimum balance<br />
                       • Multi-chain support
                     </div>
                   </div>
@@ -134,10 +134,10 @@ export default function PaymentsSection() {
                   </div>
                   <div className="text-gray-600">unlimited access</div>
                   <div className="mt-4 pt-4 border-t border-gray-200">
-                    <div className="text-sm text-gray-600">
-                      • Pay once, use freely<br />
-                      • Auto-renew optional<br />
-                      • Cancel anytime
+                  <div className="text-sm text-gray-600">
+                      • Fixed utility access fees<br />
+                      • Transparent pricing<br />
+                      • Service revenue sharing
                     </div>
                   </div>
                 </div>

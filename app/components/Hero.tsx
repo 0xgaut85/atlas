@@ -51,7 +51,7 @@ export default function Hero() {
             transition={{ duration: 0.8, delay: 0.3 }}
             className="text-[clamp(1rem,2.5vw,2rem)] font-normal text-white mb-12 leading-tight max-w-5xl break-words"
           >
-            Atlas402 turns APIs into instant micropayments—no subscriptions, no friction.
+            Atlas402 turns APIs into instant micropayments—pay-per-request with no subscriptions.
           </motion.p>
 
           {/* CTA Buttons - Horizontal Layout */}
@@ -101,8 +101,8 @@ export default function Hero() {
               <div className="text-xs text-gray-300 font-light">Live</div>
             </div>
             <div className="bg-transparent backdrop-blur-sm p-6 text-center border border-dashed border-white/30 h-full">
-              <div className="text-3xl font-bold mb-2 text-white">5 Tools</div>
-              <div className="text-xs text-gray-300 font-light">Utilities</div>
+              <div className="text-3xl font-bold mb-2 text-white">6 Utilities</div>
+              <div className="text-xs text-gray-300 font-light">Tools</div>
             </div>
             <div className="bg-transparent backdrop-blur-sm p-6 text-center border border-dashed border-white/30 h-full">
               <div className="text-3xl font-bold mb-2 text-white">Beta</div>

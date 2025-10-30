@@ -65,7 +65,7 @@ export default function ServicesSection() {
                   <div className="text-red-600 font-bold text-sm mb-4">[02]</div>
                   <h3 className="text-2xl font-bold text-black mb-4 font-title">Atlas Index</h3>
                   <p className="text-gray-600 mb-6 leading-relaxed flex-1">
-                    Real-time signal layer for x402 services. Track activity, monitor performance, discover patterns.
+                    Discover and test x402 services across categories. Filter by network, category, and price. Real-time service discovery from Atlas402 facilitator.
                   </p>
                   <div className="flex items-center gap-2 text-red-600 font-medium group-hover:gap-3 transition-all duration-300">
                     <span>Explore</span>
