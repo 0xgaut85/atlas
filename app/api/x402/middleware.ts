@@ -8,9 +8,10 @@ export interface PaymentVerification {
 }
 
 /**
- * Verifies x402 payment from request headers using PayAI facilitator
+ * Verifies x402 payment from request headers using Coinbase CDP facilitator
  * This follows the x402 standard by using the facilitator for verification
  * which also auto-registers the merchant for discovery on x402scan.com
+ * CRITICAL: Payments MUST be verified by facilitator to appear on x402scan
  */
 export async function verifyX402Payment(
   request: Request,
@@ -68,7 +69,7 @@ export async function verifyX402Payment(
     const priceNumber = Number(price.replace(/[^0-9.]/g, '')) || 1;
     const expectedAmountMicro = Math.round(priceNumber * 1_000_000).toString();
 
-    // Check if we have EIP-3009 authorization (PayAI facilitator format)
+      // Check if we have EIP-3009 authorization (Coinbase facilitator format)
     if (payment.payload?.signature && payment.payload?.authorization) {
       console.log('✅ Payment received with EIP-3009 authorization');
       console.log('Authorization details:', {
@@ -77,7 +78,8 @@ export async function verifyX402Payment(
         value: payment.payload.authorization.value,
       });
       
-      // Use PayAI facilitator to verify EIP-3009 authorization
+      // Use Coinbase CDP facilitator to verify EIP-3009 authorization
+      // CRITICAL: Must succeed for transactions to appear on x402scan
 
       
       try {
@@ -96,8 +98,8 @@ export async function verifyX402Payment(
         });
 
         if (facilitatorVerification.success && facilitatorVerification.data?.valid) {
-          console.log('✅ Payment verified via PayAI facilitator');
-          console.log('✅ Merchant auto-registered for discovery');
+          console.log('✅ Payment verified via Coinbase CDP facilitator');
+          console.log('✅ Transaction will appear on x402scan after sync (~5-15 minutes)');
           
           // Record payment in database for analytics
           try {
@@ -113,7 +115,7 @@ export async function verifyX402Payment(
               service: null,
               metadata: {
                 facilitatorVerified: true,
-                verifiedBy: 'payai-facilitator',
+                verifiedBy: 'coinbase-cdp-facilitator',
               },
             });
             console.log('✅ Payment recorded in database');
@@ -149,61 +151,23 @@ export async function verifyX402Payment(
             },
           });
           
-          // TEMPORARY WORKAROUND: Accept payment anyway if signature structure is valid
-          // Facilitator verification fails due to signature mismatch, but authorization is signed correctly
-          // Payments will work, USDC can be received by manually executing the authorization
-          // TODO: Fix facilitator signature validation once PayAI provides more details
-          console.log('⚠️ Facilitator verification failed, but accepting payment anyway (workaround)');
-          console.log('⚠️ NOTE: Authorization is signed, but facilitator rejected it. You may need to execute transfer manually or fix facilitator issue.');
-          
-          // Record payment in database with note that facilitator failed
-          try {
-            const { recordPayment } = await import('@/lib/atlas-tracking');
-            await recordPayment({
-              txHash: payment.payload?.authorization?.nonce || 'facilitator-failed',
-              userAddress: payment.payload.authorization.from,
-              merchantAddress: expectedRecipient,
-              network: network,
-              amountMicro: parseInt(payment.payload.authorization.value),
-              currency: 'USDC',
-              category: 'access',
-              service: null,
-              metadata: {
-                facilitatorVerified: false,
-                verifiedBy: 'workaround-accept-despite-facilitator-failure',
-                eip3009: true,
-                facilitatorError: errorDetails,
-                note: 'Payment accepted despite facilitator failure - authorization is valid but facilitator rejected signature',
-              },
-            });
-            console.log('✅ Payment recorded (workaround mode)');
-          } catch (dbError: any) {
-            console.error('Failed to record payment:', dbError.message);
-          }
-          
-          // Accept payment - authorization is valid, facilitator just has signature validation issue
+          // Coinbase facilitator verification failed - payment cannot be verified
+          // Transactions must be verified by facilitator to appear on x402scan
+          console.error('❌ Coinbase facilitator verification failed - payment rejected');
+          console.error('❌ Transactions must be verified by facilitator to appear on x402scan');
           return {
-            valid: true,
-            payment: {
-              transactionHash: payment.payload?.authorization?.nonce,
-              network: payment.network || network,
-              amount: payment.payload?.authorization?.value || expectedAmountMicro,
-              from: payment.payload?.authorization?.from,
-              to: expectedRecipient,
-              verified: true,
-              facilitatorVerified: false,
-              txHash: null, // No tx hash since facilitator didn't execute
-              note: 'Payment accepted via workaround - facilitator verification failed but authorization is valid',
-            },
+            valid: false,
+            error: `Facilitator verification failed: ${errorDetails}. Payment must be verified by Coinbase facilitator to appear on x402scan.`,
           };
         }
       } catch (facilitatorError: any) {
-        console.error('❌ Facilitator verification error:', facilitatorError);
+        console.error('❌ Coinbase facilitator verification error:', facilitatorError);
         console.error('❌ Error stack:', facilitatorError.stack);
-        // For EIP-3009, if facilitator fails, payment wasn't executed
+        // For EIP-3009, payment MUST be verified by facilitator to appear on x402scan
+        // If facilitator fails, payment cannot be accepted
         return {
           valid: false,
-          error: `Facilitator error: ${facilitatorError.message || 'Unknown error'}`,
+          error: `Coinbase facilitator error: ${facilitatorError.message || 'Unknown error'}. Payment must be verified by facilitator to appear on x402scan.`,
         };
       }
     }
@@ -224,7 +188,7 @@ export async function verifyX402Payment(
         });
 
         if (facilitatorVerification.success && facilitatorVerification.data?.valid) {
-          console.log('✅ Payment verified via PayAI facilitator (legacy)');
+          console.log('✅ Payment verified via Coinbase CDP facilitator (legacy)');
           return {
             valid: true,
             payment: {
