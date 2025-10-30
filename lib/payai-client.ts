@@ -172,23 +172,50 @@ class PayAIClient {
 
   /**
    * Verify a payment via PayAI facilitator
-   * PayAI facilitator expects a specific format for verification
+   * PayAI facilitator expects x402 format: x402Version, paymentHeader (base64), paymentRequirements
    */
   async verifyPayment(paymentData: any): Promise<FacilitatorResponse<any>> {
     try {
-      // Format request according to PayAI facilitator API spec
-      // Try the simplified format first (for direct transaction verification)
-      const requestPayload = {
-        txHash: paymentData.txHash,
+      // PayAI facilitator expects x402 format with paymentHeader
+      // Create payment payload in x402 format
+      const paymentPayload = {
+        scheme: paymentData.network === 'base' ? 'x402+eip712' : 'x402+solana',
         network: paymentData.network,
-        expectedAmount: String(paymentData.expectedAmount), // Ensure string
-        expectedRecipient: paymentData.expectedRecipient?.toLowerCase(), // Ensure lowercase
-        tokenAddress: paymentData.tokenAddress?.toLowerCase(), // Ensure lowercase
+        payload: {
+          transactionHash: paymentData.txHash,
+          network: paymentData.network,
+          amount: String(paymentData.expectedAmount),
+          from: '', // Will be filled by facilitator
+          to: paymentData.expectedRecipient?.toLowerCase(),
+        },
+      };
+
+      // Encode payment payload as base64 (x402 paymentHeader format)
+      const paymentHeader = Buffer.from(JSON.stringify(paymentPayload)).toString('base64');
+
+      // Create payment requirements
+      const paymentRequirements = {
+        scheme: paymentData.network === 'base' ? 'x402+eip712' : 'x402+solana',
+        network: paymentData.network,
+        maxAmountRequired: String(paymentData.expectedAmount),
+        payTo: paymentData.expectedRecipient?.toLowerCase(),
+        asset: paymentData.tokenAddress?.toLowerCase(),
+      };
+
+      // Format request according to x402 facilitator API spec
+      const requestPayload = {
+        x402Version: 1,
+        paymentHeader: paymentHeader,
+        paymentRequirements: paymentRequirements,
       };
 
       console.log('🔍 PayAI Facilitator Request:', {
         url: `${this.facilitatorUrl}/verify`,
-        payload: requestPayload,
+        payload: {
+          x402Version: requestPayload.x402Version,
+          paymentHeader: paymentHeader.substring(0, 50) + '...', // Log preview only
+          paymentRequirements: requestPayload.paymentRequirements,
+        },
       });
 
       const response = await fetch(`${this.facilitatorUrl}/verify`, {
@@ -211,15 +238,21 @@ class PayAIClient {
       if (!response.ok) {
         console.error('❌ Facilitator verification failed:', {
           status: response.status,
-          error: data.error || data.message || 'Unknown error',
+          error: data.error || data.message || data.invalidReason || 'Unknown error',
           fullResponse: data,
         });
       }
       
+      // Facilitator returns { isValid: true/false, invalidReason: string | null }
+      const isValid = data.isValid === true;
+      
       return {
-        success: response.ok,
-        data: response.ok ? data : undefined,
-        error: response.ok ? undefined : (data.error || data.message || 'Verification failed'),
+        success: response.ok && isValid,
+        data: response.ok && isValid ? {
+          valid: isValid,
+          ...data,
+        } : undefined,
+        error: response.ok && !isValid ? (data.invalidReason || data.error || 'Verification failed') : (response.ok ? undefined : (data.error || data.message || 'Verification failed')),
       };
     } catch (error) {
       console.error('❌ Facilitator verification error:', error);
