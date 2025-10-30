@@ -175,6 +175,11 @@ class PayAIClient {
    */
   async verifyPayment(paymentData: any): Promise<FacilitatorResponse<any>> {
     try {
+      console.log('🔍 PayAI Facilitator Request:', {
+        url: `${this.facilitatorUrl}/verify`,
+        payload: paymentData,
+      });
+
       const response = await fetch(`${this.facilitatorUrl}/verify`, {
         method: 'POST',
         headers: {
@@ -185,12 +190,27 @@ class PayAIClient {
 
       const data = await response.json();
       
+      console.log('🔍 PayAI Facilitator Response:', {
+        status: response.status,
+        statusText: response.statusText,
+        data: data,
+      });
+      
+      if (!response.ok) {
+        console.error('❌ Facilitator verification failed:', {
+          status: response.status,
+          error: data.error || data.message || 'Unknown error',
+          fullResponse: data,
+        });
+      }
+      
       return {
         success: response.ok,
         data: response.ok ? data : undefined,
-        error: response.ok ? undefined : data.error || 'Verification failed',
+        error: response.ok ? undefined : (data.error || data.message || 'Verification failed'),
       };
     } catch (error) {
+      console.error('❌ Facilitator verification error:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
