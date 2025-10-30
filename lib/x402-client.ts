@@ -281,7 +281,8 @@ export async function makeUSDCTransfer(
 
 /**
  * Creates an x402-enabled fetch client
- * Handles 402 responses by making actual on-chain USDC transfers
+ * Handles 402 responses by making DIRECT ON-CHAIN USDC transfers (not facilitator)
+ * This is for the main site - simple and reliable
  */
 export function createX402Client(walletProvider: any) {
   return async function x402Fetch(
@@ -294,9 +295,9 @@ export function createX402Client(walletProvider: any) {
       // First attempt without payment to check if required
       const initialResponse = await fetch(url, fetchOptions);
 
-      // If 402, payment is required
+      // If 402, payment is required - use DIRECT ON-CHAIN transfer
       if (initialResponse.status === 402 && !skipPayment) {
-        console.log('💳 Payment required, creating EIP-3009 authorization...');
+        console.log('💳 Payment required, making direct on-chain USDC transfer...');
 
         try {
           // Parse payment requirements from 402 response
@@ -310,62 +311,49 @@ export function createX402Client(walletProvider: any) {
             throw new Error('Base payment option not available');
           }
 
-          console.log('💰 Creating authorization for:', {
-            amount: basePayment.maxAmountRequired,
-            recipient: basePayment.payTo,
+          const amountMicro = parseInt(basePayment.maxAmountRequired);
+          const recipient = basePayment.payTo;
+
+          console.log('💰 Making direct on-chain transfer:', {
+            amount: amountMicro,
+            recipient: recipient,
             network: 'base',
-            extra: basePayment.extra, // Contains EIP-712 domain name and version!
           });
 
-          // Create EIP-3009 authorization signature (PayAI facilitator compatible)
-          // IMPORTANT: Pass paymentRequirements.extra to get the correct domain name/version
-          const { signature, authorization } = await createEIP3009Authorization(
+          // Make DIRECT on-chain USDC transfer (not facilitator)
+          const txHash = await makeUSDCTransfer(
             walletProvider,
-            basePayment.payTo,
-            parseInt(basePayment.maxAmountRequired),
-            'base',
-            basePayment.extra // Pass extra to use correct domain values
+            recipient,
+            amountMicro,
+            'base'
           );
 
-          console.log('✅ EIP-3009 authorization created:', {
-            signature: signature.substring(0, 20) + '...',
-            authorization: {
-              from: authorization.from,
-              to: authorization.to,
-              value: authorization.value,
-            },
-          });
+          console.log('✅ On-chain transfer complete:', txHash);
 
-          // Create payment payload in PayAI facilitator format
+          // Wait for transaction confirmation (optional, but recommended)
+          // For now, we'll just send the txHash in the payment header
+          
+          // Create payment payload with transaction hash (direct on-chain format)
           const paymentPayload = {
             x402Version: 1,
             scheme: 'exact',
             network: 'base',
-            payload: {
-              signature: signature,
-              authorization: authorization,
-            },
+            transactionHash: txHash,
+            amount: amountMicro.toString(),
+            to: recipient.toLowerCase(),
           };
 
-          // Base64 encode payment payload (as per x402 standard)
-          // Use browser-compatible base64 encoding
-          let paymentHeaderB64: string;
-          try {
-            paymentHeaderB64 = btoa(JSON.stringify(paymentPayload));
-            console.log('✅ Payment payload base64 encoded, length:', paymentHeaderB64.length);
-          } catch (b64Error: any) {
-            console.error('❌ Base64 encoding failed:', b64Error);
-            throw new Error(`Failed to encode payment: ${b64Error.message}`);
-          }
+          const paymentHeaderB64 = btoa(JSON.stringify(paymentPayload));
 
-          // Retry with payment header containing EIP-3009 authorization
+          console.log('📤 Retrying request with payment header...');
+
+          // Retry the request with payment header containing transaction hash
           // IMPORTANT: Preserve original body for POST requests
-          console.log('🔄 Retrying request with EIP-3009 authorization...');
           const retryOptions: RequestInit = {
             method: fetchOptions.method || 'GET',
             headers: {
               ...fetchOptions.headers,
-              'x-payment': paymentHeaderB64, // Base64 encoded as per x402 standard
+              'x-payment': paymentHeaderB64,
             },
           };
           
@@ -377,33 +365,26 @@ export function createX402Client(walletProvider: any) {
           
           const paidResponse = await fetch(url, retryOptions);
 
-          console.log('📨 Retry response status:', paidResponse.status);
-
-          // If still 402, log detailed error and throw helpful message
-          if (paidResponse.status === 402) {
-            let errorInfo: any = {};
+          if (!paidResponse.ok) {
+            const errorText = await paidResponse.text().catch(() => 'Unknown error');
+            console.error('❌ Server still returned error after payment:', paidResponse.status, errorText);
+            
+            // Parse error response if possible
             try {
-              const errorText = await paidResponse.text();
-              errorInfo = errorText ? JSON.parse(errorText) : {};
-              console.error('❌ Server still returned 402 after sending authorization:', errorInfo);
-              console.error('📤 Payment header sent (first 100 chars):', paymentHeaderB64.substring(0, 100));
-              console.error('📦 Full payment payload:', JSON.stringify(paymentPayload, null, 2));
-              
-              // Extract error message from response
-              const errorMsg = errorInfo.error || errorInfo.message || 'Payment verification failed';
-              throw new Error(`Payment failed: ${errorMsg}. Check server logs for details.`);
-            } catch (parseError) {
-              console.error('❌ Failed to parse error response:', parseError);
-              throw new Error('Payment verification failed. Server returned 402. Check server logs.');
+              const errorJson = JSON.parse(errorText);
+              throw new Error(`Payment failed: ${errorJson.error || errorText}. Check server logs.`);
+            } catch {
+              throw new Error(`Payment failed: Payment verification failed. Server returned ${paidResponse.status}. Check server logs.`);
             }
           }
 
+          console.log('✅ Payment verified successfully');
           return paidResponse;
         } catch (error: any) {
-          console.error('❌ Payment authorization failed:', error);
-          // If authorization creation failed (user rejected), throw clear error
-          if (error.message?.includes('User rejected') || error.message?.includes('rejected')) {
-            throw new Error('Payment authorization was rejected. Please try again and approve the signature request.');
+          console.error('❌ On-chain transfer failed:', error);
+          // If user rejected transaction, throw clear error
+          if (error.message?.includes('User rejected') || error.message?.includes('rejected') || error.message?.includes('denied')) {
+            throw new Error('Transaction was rejected. Please try again and approve the transaction in your wallet.');
           }
           throw new Error(`Payment failed: ${error.message || 'Unknown error'}`);
         }

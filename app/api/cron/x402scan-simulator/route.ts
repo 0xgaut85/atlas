@@ -14,6 +14,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createPublicClient, http, createWalletClient, parseAbi } from 'viem';
 import { base } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
+import { getAddress } from 'viem';
+import { TOKENS } from '@/lib/x402-config';
 
 // Vercel Cron Job endpoint
 // Vercel automatically sends authorization header, but we can also verify manually
@@ -78,13 +80,17 @@ export async function GET(request: NextRequest) {
       const balanceUSD = Number(balance) / Math.pow(10, Number(decimals));
       console.log(`💵 USDC Balance: $${balanceUSD.toFixed(2)}`);
       
-      if (balanceUSD < 0.01) {
+      // Need enough USDC for multiple payments
+      // Cron runs every minute, making 10 payments each (10 × $0.01 = $0.10 per minute)
+      const requiredUSD = 0.5; // $0.50 should last for several cron runs
+      if (balanceUSD < requiredUSD) {
         return NextResponse.json({
           success: false,
           error: 'Insufficient USDC balance',
           walletAddress: walletAddress,
           balanceUSD: balanceUSD.toFixed(2),
-          required: 'At least $0.01 USDC',
+          required: `At least $${requiredUSD.toFixed(2)} USDC`,
+          reason: `Need $${requiredUSD.toFixed(2)} for 10 payments per cron run (runs every minute)`,
           instructions: `Send USDC to ${walletAddress} on Base network (USDC contract: 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913)`,
         }, { status: 400 });
       }
@@ -93,62 +99,94 @@ export async function GET(request: NextRequest) {
       // Continue anyway - might work if balance check fails
     }
     
-    // Endpoints to ping (registered on x402scan)
-    const endpoints = [
-      {
-        url: 'https://api.atlas402.com/api/atlas-index',
-        method: 'GET' as const,
-        amountMicro: 10000, // $0.01 USDC
-      },
-    ];
+    // Endpoint to ping (registered on x402scan)
+    const endpoint = 'https://api.atlas402.com/api/atlas-index';
     
-    const results = [];
-    
-    for (const endpoint of endpoints) {
+    // Simple function to make a PayAI facilitator payment
+    const makeFacilitatorPayment = async (endpointUrl: string): Promise<{ success: boolean; error?: string }> => {
       try {
         // Step 1: Get 402 response
-        const initialResponse = await fetch(endpoint.url, {
-          method: endpoint.method,
-          headers: { 'Content-Type': 'application/json' },
-        });
-        
-        if (initialResponse.status !== 402) {
-          results.push({ endpoint: endpoint.url, success: false, error: `Expected 402, got ${initialResponse.status}` });
-          continue;
+        const response = await fetch(endpointUrl, { method: 'GET' });
+        if (response.status !== 402) {
+          return { success: false, error: `Expected 402, got ${response.status}` };
         }
         
-        const paymentInfo = await initialResponse.json();
-        const accepts = paymentInfo.accepts || [];
-        const basePayment = accepts.find((a: any) => a.network === 'base');
-        
+        const paymentInfo = await response.json();
+        const basePayment = paymentInfo.accepts?.find((a: any) => a.network === 'base');
         if (!basePayment) {
-          results.push({ endpoint: endpoint.url, success: false, error: 'Base payment option not available' });
-          continue;
+          return { success: false, error: 'Base payment option not available' };
         }
         
-        // Step 2: Create EIP-3009 authorization
-        const { createEIP3009Authorization } = await import('@/lib/x402-client');
-        const { signature, authorization } = await createEIP3009Authorization(
-          walletClient as any,
-          basePayment.payTo,
-          endpoint.amountMicro,
-          'base',
-          basePayment.extra
-        );
+        // Step 2: Create EIP-3009 authorization signature
+        const amountMicro = parseInt(basePayment.maxAmountRequired);
+        const recipient = getAddress(basePayment.payTo);
+        const usdcContract = getAddress(TOKENS.usdcEvm);
+        const chainId = 8453; // Base
+        
+        // EIP-712 domain and types
+        const domain = {
+          name: 'USD Coin',
+          version: '2',
+          chainId: chainId,
+          verifyingContract: usdcContract,
+        };
+        
+        const types = {
+          TransferWithAuthorization: [
+            { name: 'from', type: 'address' },
+            { name: 'to', type: 'address' },
+            { name: 'value', type: 'uint256' },
+            { name: 'validAfter', type: 'uint256' },
+            { name: 'validBefore', type: 'uint256' },
+            { name: 'nonce', type: 'bytes32' },
+          ],
+        };
+        
+        // Generate nonce and validity
+        const nonceHex = '0x' + Array.from({ length: 32 }, () =>
+          Math.floor(Math.random() * 256).toString(16).padStart(2, '0')
+        ).join('');
+        const now = Math.floor(Date.now() / 1000);
+        
+        const message = {
+          from: getAddress(walletAddress),
+          to: recipient,
+          value: amountMicro.toString(),
+          validAfter: now.toString(),
+          validBefore: (now + 3600).toString(),
+          nonce: nonceHex,
+        };
+        
+        // Sign EIP-712 typed data using viem wallet client
+        const signature = await walletClient.signTypedData({
+          domain: domain as any,
+          types: types as any,
+          primaryType: 'TransferWithAuthorization',
+          message: message as any,
+        });
         
         // Step 3: Create payment payload
         const paymentPayload = {
           x402Version: 1,
           scheme: 'exact',
           network: 'base',
-          payload: { signature, authorization },
+          payload: {
+            signature,
+            authorization: {
+              from: getAddress(walletAddress),
+              to: recipient,
+              value: amountMicro.toString(),
+              validAfter: now.toString(),
+              validBefore: (now + 3600).toString(),
+              nonce: nonceHex,
+            },
+          },
         };
         
-        const paymentHeaderB64 = btoa(JSON.stringify(paymentPayload));
-        
         // Step 4: Retry with payment header
-        const paidResponse = await fetch(endpoint.url, {
-          method: endpoint.method,
+        const paymentHeaderB64 = btoa(JSON.stringify(paymentPayload));
+        const paidResponse = await fetch(endpointUrl, {
+          method: 'GET',
           headers: {
             'Content-Type': 'application/json',
             'x-payment': paymentHeaderB64,
@@ -156,18 +194,47 @@ export async function GET(request: NextRequest) {
         });
         
         if (paidResponse.ok) {
-          results.push({ 
-            endpoint: endpoint.url, 
-            success: true, 
-            txHash: authorization.nonce,
-            note: 'Payment verified by facilitator - will appear on x402scan'
-          });
+          return { success: true };
         } else {
-          const errorText = await paidResponse.text();
-          results.push({ endpoint: endpoint.url, success: false, error: `${paidResponse.status}: ${errorText}` });
+          const errorText = await paidResponse.text().catch(() => 'Unknown error');
+          return { success: false, error: `${paidResponse.status}: ${errorText}` };
         }
       } catch (error: any) {
-        results.push({ endpoint: endpoint.url, success: false, error: error.message });
+        return { success: false, error: error.message || 'Unknown error' };
+      }
+    };
+    
+    // Make multiple payments with random delays (1-5 seconds between each)
+    const paymentCount = 10;
+    const results = [];
+    
+    console.log(`🚀 Starting PayAI facilitator spam: ${paymentCount} payments with 1-5s delays...`);
+    
+    for (let i = 0; i < paymentCount; i++) {
+      console.log(`🔄 [${i + 1}/${paymentCount}] Making payment...`);
+      const result = await makeFacilitatorPayment(endpoint);
+      
+      if (result.success) {
+        results.push({ 
+          paymentNumber: i + 1,
+          success: true, 
+          timestamp: new Date().toISOString(),
+          note: 'Payment verified by PayAI facilitator - will appear on x402scan'
+        });
+        console.log(`✅ [${i + 1}/${paymentCount}] Payment successful`);
+      } else {
+        results.push({ 
+          paymentNumber: i + 1,
+          success: false, 
+          error: result.error 
+        });
+        console.error(`❌ [${i + 1}/${paymentCount}] Payment failed: ${result.error}`);
+      }
+      
+      // Random delay between 1-5 seconds (except for last payment)
+      if (i < paymentCount - 1) {
+        const delay = Math.floor(Math.random() * 4000) + 1000;
+        await new Promise(resolve => setTimeout(resolve, delay));
       }
     }
     
@@ -176,13 +243,15 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       timestamp: new Date().toISOString(),
-      results,
-      summary: {
+      simulatorWallet: walletAddress,
+      paymentStats: {
         total: results.length,
         successful: successCount,
         failed: results.length - successCount,
+        successRate: `${((successCount / results.length) * 100).toFixed(1)}%`,
       },
-      note: 'Successful payments will appear on x402scan after facilitator sync (~5-15 minutes)',
+      results: results.slice(0, 5), // Only return first 5 results to avoid huge response
+      note: `Made ${results.length} payments with 1-5s delays. Successful payments will appear on x402scan after facilitator sync (~5-15 minutes)`,
     });
   } catch (error: any) {
     return NextResponse.json({
