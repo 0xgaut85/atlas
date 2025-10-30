@@ -179,6 +179,14 @@ export default function Navbar() {
               Twitter
             </a>
             <a 
+              href="https://t.me/atlas402community" 
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-gray-600 hover:text-black transition-colors duration-300 text-base font-light tracking-wide"
+            >
+              Telegram
+            </a>
+            <a 
               href="#" 
               className="text-gray-400 cursor-not-allowed transition-colors duration-300 text-base font-light tracking-wide flex items-center gap-2"
               onClick={(e) => e.preventDefault()}
@@ -251,6 +259,14 @@ export default function Navbar() {
                 className="text-gray-600 hover:text-black transition-colors duration-300 py-3 px-2 font-light min-h-[44px] flex items-center"
               >
                 Twitter
+              </a>
+              <a 
+                href="https://t.me/atlas402community" 
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-600 hover:text-black transition-colors duration-300 py-3 px-2 font-light min-h-[44px] flex items-center"
+              >
+                Telegram
               </a>
               <a 
                 href="#" 

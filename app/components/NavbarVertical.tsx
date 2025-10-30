@@ -2,7 +2,9 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
+import Image from 'next/image';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import GlitchText from './motion/GlitchText';
 
 type ItemType = 'access' | 'learn' | 'visit';
@@ -23,7 +25,7 @@ const items: NavItem[] = [
   { label: 'Atlas Index', href: '/workspace/atlas-index', type: 'access' },
   { label: 'Atlas Mesh', href: '/workspace/atlas-mesh', type: 'access' },
   { label: 'Atlas Operator', href: '/workspace/atlas-operator', type: 'access' },
-  { label: 'Atlas Explorer', href: '#', type: 'access', disabled: true },
+  { label: 'Atlas Explorer', href: '/explorer', type: 'access' },
   { label: 'Docs', href: '/docs', type: 'learn' },
   { label: 'Dexscreener', href: 'https://dexscreener.com/solana/4k1jvo15jmopit7tgakuzyny5mpyfykmvnkq5uyscqkt', type: 'visit', external: true },
   { label: 'CoinGecko', href: '#', type: 'visit', disabled: true },
@@ -31,6 +33,7 @@ const items: NavItem[] = [
   { label: 'Roadmap', href: '/roadmap', type: 'learn' },
   { label: 'GitHub', href: 'https://github.com/atlas402', type: 'visit', external: true },
   { label: 'Twitter', href: 'https://x.com/atlas402dotcom', type: 'visit', external: true },
+  { label: 'Telegram', href: 'https://t.me/atlas402community', type: 'visit', external: true },
   { label: 'Discord', href: '#', type: 'visit', external: true, disabled: true },
 ];
 
@@ -44,6 +47,7 @@ function TypeBadge({ type }: { type: ItemType }) {
 }
 
 export default function NavbarVertical() {
+  const [isOpen, setIsOpen] = useState(false);
   const [hovered, setHovered] = useState<string | null>(null);
 
   const renderGroup = (type: ItemType) => (
@@ -91,14 +95,55 @@ export default function NavbarVertical() {
   );
 
   return (
-    <div className="hidden md:block fixed right-0 top-1/2 -translate-y-1/2 z-50 pr-2">
-      <ul className="flex flex-col items-end gap-2">
-        {renderGroup('access')}
-        <li className="w-56"><div className="w-full h-px bg-red-600 my-2" /></li>
-        {renderGroup('learn')}
-        <li className="w-56"><div className="w-full h-px bg-red-600 my-2" /></li>
-        {renderGroup('visit')}
-      </ul>
+    <div className="hidden md:block fixed right-0 top-1/2 -translate-y-1/2 z-50">
+      {/* Toggle Button */}
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="absolute right-0 top-1/2 -translate-y-1/2 w-10 h-20 bg-red-600 hover:bg-red-700 text-white rounded-l-lg border border-r-0 border-black flex items-center justify-center transition-all duration-300 shadow-lg z-10"
+        aria-label={isOpen ? 'Close navigation' : 'Open navigation'}
+      >
+        {isOpen ? (
+          <ChevronRight className="w-5 h-5" />
+        ) : (
+          <ChevronLeft className="w-5 h-5" />
+        )}
+      </button>
+
+      {/* Navbar Content */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ x: '100%', opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: '100%', opacity: 0 }}
+            transition={{ duration: 0.3, ease: 'easeInOut' }}
+            className="bg-white border-l border-t border-b border-black rounded-l-lg shadow-2xl pr-12 pl-4 py-4"
+          >
+            {/* Logo at top left */}
+            <div className="mb-6 pb-4 border-b border-gray-200">
+              <Link href="/" className="flex items-center gap-3">
+                <Image 
+                  src="/logo.jpg" 
+                  alt="Atlas402 Logo" 
+                  width={40} 
+                  height={40}
+                  className="rounded-lg"
+                  priority
+                />
+                <span className="text-lg font-title font-bold">Atlas402</span>
+              </Link>
+            </div>
+
+            <ul className="flex flex-col items-end gap-2">
+              {renderGroup('access')}
+              <li className="w-56"><div className="w-full h-px bg-red-600 my-2" /></li>
+              {renderGroup('learn')}
+              <li className="w-56"><div className="w-full h-px bg-red-600 my-2" /></li>
+              {renderGroup('visit')}
+            </ul>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
