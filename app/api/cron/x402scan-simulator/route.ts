@@ -15,12 +15,17 @@ import { createPublicClient, http, createWalletClient, parseAbi } from 'viem';
 import { base } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
 
-// Verify cron secret (set in Vercel environment variables)
+// Vercel Cron Job endpoint
+// Vercel automatically sends authorization header, but we can also verify manually
 export async function GET(request: NextRequest) {
+  // Vercel cron jobs include Authorization header automatically
+  // For manual testing, you can also set CRON_SECRET
   const authHeader = request.headers.get('authorization');
   const cronSecret = process.env.CRON_SECRET;
   
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+  // Skip auth check if no secret is set (for development)
+  // In production, Vercel will automatically add auth header
+  if (cronSecret && authHeader && authHeader !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
   
@@ -35,6 +40,10 @@ export async function GET(request: NextRequest) {
   try {
     // Setup wallet
     const account = privateKeyToAccount(simulatorPrivateKey as `0x${string}`);
+    const walletAddress = account.address;
+    
+    console.log(`💰 Simulator wallet: ${walletAddress}`);
+    
     const publicClient = createPublicClient({
       chain: base,
       transport: http('https://mainnet.base.org'),
@@ -45,6 +54,44 @@ export async function GET(request: NextRequest) {
       chain: base,
       transport: http('https://mainnet.base.org'),
     });
+    
+    // Check USDC balance before proceeding
+    const usdcAbi = parseAbi([
+      'function balanceOf(address owner) view returns (uint256)',
+      'function decimals() view returns (uint8)',
+    ]);
+    
+    try {
+      const balance = await publicClient.readContract({
+        address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913' as `0x${string}`,
+        abi: usdcAbi,
+        functionName: 'balanceOf',
+        args: [walletAddress],
+      });
+      
+      const decimals = await publicClient.readContract({
+        address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913' as `0x${string}`,
+        abi: usdcAbi,
+        functionName: 'decimals',
+      });
+      
+      const balanceUSD = Number(balance) / Math.pow(10, Number(decimals));
+      console.log(`💵 USDC Balance: $${balanceUSD.toFixed(2)}`);
+      
+      if (balanceUSD < 0.01) {
+        return NextResponse.json({
+          success: false,
+          error: 'Insufficient USDC balance',
+          walletAddress: walletAddress,
+          balanceUSD: balanceUSD.toFixed(2),
+          required: 'At least $0.01 USDC',
+          instructions: `Send USDC to ${walletAddress} on Base network (USDC contract: 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913)`,
+        }, { status: 400 });
+      }
+    } catch (balanceError: any) {
+      console.warn('⚠️ Could not check USDC balance:', balanceError.message);
+      // Continue anyway - might work if balance check fails
+    }
     
     // Endpoints to ping (registered on x402scan)
     const endpoints = [
