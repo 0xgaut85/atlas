@@ -143,14 +143,19 @@ export async function GET(request: NextRequest) {
         const nonceHex = '0x' + Array.from({ length: 32 }, () =>
           Math.floor(Math.random() * 256).toString(16).padStart(2, '0')
         ).join('');
+        
+        // CRITICAL: validAfter must be <= current block time
+        // Set it to 10 seconds ago to account for block time differences
         const now = Math.floor(Date.now() / 1000);
+        const validAfter = now - 10; // 10 seconds ago to ensure it's valid
+        const validBefore = now + 3600; // 1 hour from now
         
         const message = {
           from: getAddress(walletAddress),
           to: recipient,
           value: amountMicro.toString(),
-          validAfter: now.toString(),
-          validBefore: (now + 3600).toString(),
+          validAfter: validAfter.toString(),
+          validBefore: validBefore.toString(),
           nonce: nonceHex,
         };
         
@@ -166,8 +171,8 @@ export async function GET(request: NextRequest) {
           from: getAddress(walletAddress),
           to: recipient,
           value: amountMicro.toString(),
-          validAfter: now.toString(),
-          validBefore: (now + 3600).toString(),
+          validAfter: validAfter.toString(),
+          validBefore: validBefore.toString(),
           nonce: nonceHex,
         };
         
