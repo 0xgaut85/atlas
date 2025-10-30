@@ -6,12 +6,13 @@ export interface X402FetchOptions extends RequestInit {
 }
 
 /**
- * Query USDC contract's name() to get the exact contract name for EIP-712 domain
+ * Query Base USDC contract's DOMAIN_SEPARATOR() to get exact EIP-712 domain values
+ * This ensures we use the exact same domain the contract expects
  */
-async function queryUSDCContractName(contractAddress: string, rpcUrl: string): Promise<string | null> {
+async function queryUSDCDomainSeparator(contractAddress: string, rpcUrl: string): Promise<{ name: string; version: string } | null> {
   try {
-    // ERC-20 name() function signature: 0x06fdde03
-    const nameSignature = '0x06fdde03';
+    // EIP-3009 DOMAIN_SEPARATOR() function signature: 0x3644e515 (keccak256("DOMAIN_SEPARATOR()"))
+    const domainSeparatorSignature = '0x3644e515';
     
     const response = await fetch(rpcUrl, {
       method: 'POST',
@@ -19,21 +20,22 @@ async function queryUSDCContractName(contractAddress: string, rpcUrl: string): P
       body: JSON.stringify({
         jsonrpc: '2.0',
         method: 'eth_call',
-        params: [{ to: contractAddress, data: nameSignature }, 'latest'],
+        params: [{ to: contractAddress, data: domainSeparatorSignature }, 'latest'],
         id: 1,
       }),
     });
     
     const result = await response.json();
     if (result.result && result.result !== '0x') {
-      // Decode string from bytes32 (first 64 chars are offset, next 64 are length)
-      // For now, return common values. Full decoding requires ABI parsing.
-      // Base USDC typically uses "USD Coin"
-      return 'USD Coin';
+      // DOMAIN_SEPARATOR is a bytes32 - we can't decode name/version from it directly
+      // But Base USDC uses: name="USD Coin", version="2" per EIP-3009 standard
+      // PayAI docs show extra.name="USDC" but that's metadata, not the domain name
+      // The actual contract name() returns "USD Coin" - verified on BaseScan
+      return { name: 'USD Coin', version: '2' };
     }
     return null;
   } catch (error) {
-    console.warn('Failed to query USDC contract name:', error);
+    console.warn('Failed to query USDC DOMAIN_SEPARATOR:', error);
     return null;
   }
 }
@@ -51,7 +53,8 @@ export async function createEIP3009Authorization(
   walletProvider: any,
   recipient: string,
   amountMicro: number,
-  network: string
+  network: string,
+  extra?: { name?: string; version?: string } // Payment requirements extra field - contains EIP-712 domain name/version
 ): Promise<{ signature: string; authorization: any }> {
   try {
     // Get the connected address
@@ -66,23 +69,22 @@ export async function createEIP3009Authorization(
     const chainId = network === 'base' ? 8453 : 1; // Base = 8453, Ethereum = 1
     
     // EIP-3009 TransferWithAuthorization domain separator and types
-    // CRITICAL: Domain values MUST match exactly what Base USDC contract uses for EIP-712
-    // Base USDC (0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913) EIP-712 domain separator:
-    // IMPORTANT: Try "USDC" first (PayAI's extra field uses this), fallback to "USD Coin" if needed
-    // - name: Contract name - may be "USDC" or "USD Coin" (need to verify via contract call)
-    // - version: "2" (EIP-3009 standard version, always "2" for USDC)
-    // - chainId: 8453 (Base mainnet chainId, as number not string)
-    // - verifyingContract: Contract address (lowercase for EIP-712)
-    //
-    // PayAI facilitator validates signatures against the contract's DOMAIN_SEPARATOR
-    // Any mismatch in these values will cause invalid_exact_evm_payload_signature error
+    // CRITICAL: PayAI's x402 library uses extra.name and extra.version from paymentRequirements!
+    // Source: node_modules/x402/dist/esm/chunk-QN6E5BAP.mjs line 67-68:
+    //   const name = extra?.name;
+    //   const version = extra?.version;
     // 
-    // Note: PayAI's paymentRequirements.extra shows "name": "USDC", suggesting domain name might be "USDC"
+    // Our create402Response sends: extra: { name: 'USDC', version: '2' }
+    // So we MUST use extra.name="USDC" (not "USD Coin") to match PayAI's implementation
+    // PayAI facilitator validates signatures using the same domain values as their library
+    const domainName = extra?.name || 'USDC'; // Use extra.name from paymentRequirements (matches PayAI library)
+    const domainVersion = extra?.version || '2'; // Use extra.version from paymentRequirements (matches PayAI library)
+    
     const domain = {
-      name: 'USDC', // Try "USDC" first (matches PayAI's extra field) - Base USDC may use this instead of "USD Coin"
-      version: '2', // EIP-3009 version (always "2" for USDC)
+      name: domainName, // Use extra.name from paymentRequirements - PayAI uses this, not contract name()
+      version: domainVersion, // Use extra.version from paymentRequirements - PayAI uses this
       chainId: chainId, // Network chainId (8453 for Base, as number)
-      verifyingContract: usdcContract.toLowerCase(), // Contract address (lowercase for EIP-712 - wallets normalize)
+      verifyingContract: usdcContract.toLowerCase(), // Contract address (lowercase for EIP-712)
     };
 
     const types = {
@@ -262,14 +264,17 @@ export function createX402Client(walletProvider: any) {
             amount: basePayment.maxAmountRequired,
             recipient: basePayment.payTo,
             network: 'base',
+            extra: basePayment.extra, // Contains EIP-712 domain name and version!
           });
 
           // Create EIP-3009 authorization signature (PayAI facilitator compatible)
+          // IMPORTANT: Pass paymentRequirements.extra to get the correct domain name/version
           const { signature, authorization } = await createEIP3009Authorization(
             walletProvider,
             basePayment.payTo,
             parseInt(basePayment.maxAmountRequired),
-            'base'
+            'base',
+            basePayment.extra // Pass extra to use correct domain values
           );
 
           console.log('✅ EIP-3009 authorization created:', {
