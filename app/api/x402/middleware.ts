@@ -26,27 +26,39 @@ export async function verifyX402Payment(
   }
 
   try {
-    // Parse payment header
-    const payment = JSON.parse(paymentHeader);
+    // Parse payment header (may be base64 encoded or plain JSON)
+    let payment: any;
+    try {
+      // Try parsing as base64 first (EIP-3009 format)
+      const decoded = Buffer.from(paymentHeader, 'base64').toString('utf-8');
+      payment = JSON.parse(decoded);
+    } catch {
+      // Fallback to plain JSON (legacy transactionHash format)
+      payment = JSON.parse(paymentHeader);
+    }
 
-    // If we have a transaction hash, verify it via PayAI facilitator
-    if (payment.transactionHash) {
-      console.log('✅ Payment received with transaction hash:', payment.transactionHash);
-      console.log('Payment details:', payment);
+    // Determine network and expected recipient
+    const network: 'base' | 'solana-mainnet' = payment.network || X402_CONFIG.network;
+    const expectedRecipient = network === 'solana-mainnet' ? X402_CONFIG.payToSol : X402_CONFIG.payTo;
+    
+    // Calculate expected amount in micro units
+    const priceNumber = Number(price.replace(/[^0-9.]/g, '')) || 1;
+    const expectedAmountMicro = Math.round(priceNumber * 1_000_000).toString();
+
+    // Check if we have EIP-3009 authorization (PayAI facilitator format)
+    if (payment.payload?.signature && payment.payload?.authorization) {
+      console.log('✅ Payment received with EIP-3009 authorization');
+      console.log('Authorization details:', {
+        from: payment.payload.authorization.from,
+        to: payment.payload.authorization.to,
+        value: payment.payload.authorization.value,
+      });
       
-      // Determine network and expected recipient
-      const network: 'base' | 'solana-mainnet' = payment.network || X402_CONFIG.network;
-      const expectedRecipient = network === 'solana-mainnet' ? X402_CONFIG.payToSol : X402_CONFIG.payTo;
-      
-      // Calculate expected amount in micro units
-      const priceNumber = Number(price.replace(/[^0-9.]/g, '')) || 1;
-      const expectedAmountMicro = Math.round(priceNumber * 1_000_000).toString();
-      
-      // Use PayAI facilitator to verify payment (standard x402 approach)
-      // This also auto-registers the merchant for discovery
+      // Use PayAI facilitator to verify EIP-3009 authorization
       try {
         const facilitatorVerification = await payaiClient.verifyPayment({
-          txHash: payment.transactionHash,
+          signature: payment.payload.signature,
+          authorization: payment.payload.authorization,
           network: network,
           expectedAmount: expectedAmountMicro,
           expectedRecipient: expectedRecipient,
@@ -80,28 +92,79 @@ export async function verifyX402Payment(
             // Continue even if DB recording fails
           }
           
+          // Facilitator verified and executed transfer - USDC is now in your wallet!
           return {
             valid: true,
             payment: {
-              transactionHash: payment.transactionHash,
-              network: payment.network,
-              amount: payment.amount,
+              transactionHash: facilitatorVerification.data?.txHash || payment.payload?.authorization?.nonce,
+              network: payment.network || network,
+              amount: payment.payload?.authorization?.value || expectedAmountMicro,
+              from: payment.payload?.authorization?.from,
+              to: expectedRecipient,
+              verified: true,
+              facilitatorVerified: true,
+              txHash: facilitatorVerification.data?.txHash, // Facilitator's execution tx hash
+            },
+          };
+        } else {
+          console.warn('⚠️ Facilitator verification failed:', facilitatorVerification.error);
+          // For EIP-3009, facilitator failure means we can't verify - return error
+          // (USDC hasn't been transferred yet, authorization is just signed)
+          return {
+            valid: false,
+            error: `Facilitator verification failed: ${facilitatorVerification.error}`,
+          };
+        }
+      } catch (facilitatorError: any) {
+        console.error('Facilitator verification error:', facilitatorError);
+        // For EIP-3009, if facilitator fails, payment wasn't executed
+        return {
+          valid: false,
+          error: `Facilitator error: ${facilitatorError.message}`,
+        };
+      }
+    }
+    
+    // Legacy transactionHash format (fallback for old clients)
+    if (payment.transactionHash || payment.payload?.transactionHash) {
+      console.log('✅ Payment received with transaction hash (legacy format)');
+      const txHash = payment.transactionHash || payment.payload?.transactionHash;
+      
+      // Try facilitator verification first (might work if they support it)
+      try {
+        const facilitatorVerification = await payaiClient.verifyPayment({
+          txHash: txHash,
+          network: network,
+          expectedAmount: expectedAmountMicro,
+          expectedRecipient: expectedRecipient,
+          tokenAddress: network === 'base' ? TOKENS.usdcEvm : TOKENS.usdcSol,
+        });
+
+        if (facilitatorVerification.success && facilitatorVerification.data?.valid) {
+          console.log('✅ Payment verified via PayAI facilitator (legacy)');
+          return {
+            valid: true,
+            payment: {
+              transactionHash: txHash,
+              network: network,
+              amount: payment.amount || expectedAmountMicro,
               from: facilitatorVerification.data?.tx?.from,
               to: expectedRecipient,
               verified: true,
               facilitatorVerified: true,
             },
           };
-        } else {
-          console.warn('⚠️ Facilitator verification failed:', facilitatorVerification.error);
-          // Fallback to on-chain verification if facilitator fails
-          return await verifyOnChainFallback(payment, network, expectedRecipient);
         }
-      } catch (facilitatorError: any) {
-        console.error('Facilitator verification error:', facilitatorError);
-        // Fallback to on-chain verification if facilitator is unavailable
-        return await verifyOnChainFallback(payment, network, expectedRecipient);
+      } catch (e) {
+        console.warn('Facilitator verification failed for legacy format, using on-chain fallback');
       }
+      
+      // Fallback to on-chain verification
+      return await verifyOnChainFallback(
+        { transactionHash: txHash, network, amount: payment.amount },
+        network,
+        expectedRecipient
+      );
     }
 
     return {

@@ -172,30 +172,45 @@ class PayAIClient {
 
   /**
    * Verify a payment via PayAI facilitator
-   * IMPORTANT: PayAI facilitator /verify endpoint ONLY supports EIP-3009 authorization format
-   * (signature + authorization object), NOT regular transactionHash verification
-   * 
-   * Since we're using regular USDC transfers (not EIP-3009), facilitator verification will fail
-   * However, USDC is ALREADY received on-chain before verification
-   * We still attempt facilitator verification for merchant registration, but fallback to on-chain verification
+   * PayAI facilitator /verify endpoint supports EIP-3009 authorization format
+   * Format: { paymentPayload: { signature, authorization }, paymentRequirements: {...} }
    */
   async verifyPayment(paymentData: any): Promise<FacilitatorResponse<any>> {
     try {
-      // PayAI facilitator expects EIP-3009 format: { signature, authorization: { from, to, value, ... } }
-      // We're sending transactionHash which won't work, but we try anyway
-      // This ensures we get proper error messages and can fallback gracefully
+      // PayAI facilitator expects EIP-3009 format: { signature, authorization: { from, to, value, validAfter, validBefore, nonce } }
+      // Check if we have EIP-3009 authorization or legacy transactionHash
       
-      const paymentPayload = {
-        x402Version: 1,
-        scheme: 'exact',
-        network: paymentData.network,
-        payload: {
-          transactionHash: paymentData.txHash, // PayAI facilitator doesn't support this for "exact" scheme
-          amount: String(paymentData.expectedAmount),
-          to: paymentData.expectedRecipient?.toLowerCase(),
-          from: paymentData.from, // Include if available
-        },
-      };
+      let paymentPayload: any;
+      
+      if (paymentData.signature && paymentData.authorization) {
+        // EIP-3009 authorization format (PayAI facilitator compatible)
+        paymentPayload = {
+          x402Version: 1,
+          scheme: 'exact',
+          network: paymentData.network,
+          payload: {
+            signature: paymentData.signature,
+            authorization: paymentData.authorization,
+          },
+        };
+        console.log('✅ Using EIP-3009 authorization format for PayAI facilitator');
+      } else if (paymentData.txHash) {
+        // Legacy transactionHash format (fallback - won't work with facilitator)
+        paymentPayload = {
+          x402Version: 1,
+          scheme: 'exact',
+          network: paymentData.network,
+          payload: {
+            transactionHash: paymentData.txHash,
+            amount: String(paymentData.expectedAmount),
+            to: paymentData.expectedRecipient?.toLowerCase(),
+            from: paymentData.from,
+          },
+        };
+        console.log('⚠️ Using legacy transactionHash format (facilitator may reject)');
+      } else {
+        throw new Error('Invalid payment data: missing signature/authorization or transactionHash');
+      }
 
       const paymentRequirements = {
         scheme: 'exact',
