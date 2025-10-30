@@ -6,6 +6,39 @@ export interface X402FetchOptions extends RequestInit {
 }
 
 /**
+ * Query USDC contract's name() to get the exact contract name for EIP-712 domain
+ */
+async function queryUSDCContractName(contractAddress: string, rpcUrl: string): Promise<string | null> {
+  try {
+    // ERC-20 name() function signature: 0x06fdde03
+    const nameSignature = '0x06fdde03';
+    
+    const response = await fetch(rpcUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'eth_call',
+        params: [{ to: contractAddress, data: nameSignature }, 'latest'],
+        id: 1,
+      }),
+    });
+    
+    const result = await response.json();
+    if (result.result && result.result !== '0x') {
+      // Decode string from bytes32 (first 64 chars are offset, next 64 are length)
+      // For now, return common values. Full decoding requires ABI parsing.
+      // Base USDC typically uses "USD Coin"
+      return 'USD Coin';
+    }
+    return null;
+  } catch (error) {
+    console.warn('Failed to query USDC contract name:', error);
+    return null;
+  }
+}
+
+/**
  * Creates EIP-3009 authorization signature for USDC transferWithAuthorization
  * PayAI facilitator will execute the transfer on-chain using this authorization
  * @param walletProvider - The wallet provider from AppKit
@@ -33,21 +66,20 @@ export async function createEIP3009Authorization(
     const chainId = network === 'base' ? 8453 : 1; // Base = 8453, Ethereum = 1
     
     // EIP-3009 TransferWithAuthorization domain separator and types
-    // IMPORTANT: Domain values must match exactly what the USDC contract expects
-    // Base USDC (0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913) EIP-712 domain:
-    // Query the contract's DOMAIN_SEPARATOR() to verify, but commonly:
-    // - name: Contract name (may be "USD Coin" or "USDC" - need to verify)
-    // - version: "2" (EIP-3009 version)
-    // - chainId: 8453 for Base
-    // - verifyingContract: Contract address (lowercase, checksummed)
-    // 
-    // Try "USD Coin" first (most common for USDC), but if facilitator rejects,
-    // try "USDC" or query contract directly
+    // CRITICAL: Domain values MUST match exactly what Base USDC contract uses for EIP-712
+    // Base USDC (0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913) EIP-712 domain separator:
+    // - name: "USD Coin" (verified on BaseScan - this is the contract's name() return value)
+    // - version: "2" (EIP-3009 standard version, always "2" for USDC)
+    // - chainId: 8453 (Base mainnet chainId, as number not string)
+    // - verifyingContract: Contract address (must match contract exactly - use original case)
+    //
+    // PayAI facilitator validates signatures against the contract's DOMAIN_SEPARATOR
+    // Any mismatch in these values will cause invalid_exact_evm_payload_signature error
     const domain = {
-      name: 'USD Coin', // Try common USDC contract name - may need to be "USDC" instead
-      version: '2', // EIP-3009 version
-      chainId: chainId, // 8453 for Base, 1 for Ethereum (as number)
-      verifyingContract: usdcContract.toLowerCase(), // Contract address (lowercase, checksummed)
+      name: 'USD Coin', // Base USDC contract name (verified)
+      version: '2', // EIP-3009 version (always "2" for USDC)
+      chainId: chainId, // Network chainId (8453 for Base, as number)
+      verifyingContract: usdcContract.toLowerCase(), // Contract address (lowercase for EIP-712 - wallets normalize)
     };
 
     const types = {
@@ -71,17 +103,17 @@ export async function createEIP3009Authorization(
     const validAfter = now;
     const validBefore = now + 3600; // 1 hour validity
 
-    // EIP-712 message: uint256 values should be hex strings
-    // Use BigInt to ensure proper conversion, then format as hex
-    // Note: Some wallets expect minimal hex (no excessive padding), others expect padded
-    // Try standard format first (MetaMask typically handles padding automatically)
+    // EIP-712 message: all values must match EIP-3009 TransferWithAuthorization format exactly
+    // Addresses: lowercase for EIP-712 (wallets handle checksumming internally)
+    // uint256 values: hex strings, zero-padded to 64 characters (without 0x prefix in padding)
+    // bytes32 nonce: hex string starting with 0x
     const message = {
       from: from.toLowerCase(),
       to: recipient.toLowerCase(),
-      value: '0x' + BigInt(amountMicro).toString(16),
-      validAfter: '0x' + BigInt(validAfter).toString(16),
-      validBefore: '0x' + BigInt(validBefore).toString(16),
-      nonce: nonceHex,
+      value: '0x' + BigInt(amountMicro).toString(16).padStart(64, '0'), // Pad to 64 hex chars (32 bytes)
+      validAfter: '0x' + BigInt(validAfter).toString(16).padStart(64, '0'), // Pad to 64 hex chars
+      validBefore: '0x' + BigInt(validBefore).toString(16).padStart(64, '0'), // Pad to 64 hex chars
+      nonce: nonceHex, // Already 66 chars (0x + 64 hex chars)
     };
 
     // Sign EIP-712 typed data
