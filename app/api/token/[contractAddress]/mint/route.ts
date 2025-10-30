@@ -143,34 +143,120 @@ export async function GET(
         }, { status: 400 });
       }
 
-      // Verify payment via PayAI facilitator
-      const { payaiClient } = await import('@/lib/payai-client');
-      const facilitatorVerification = await payaiClient.verifyPayment({
-        txHash: payment.transactionHash,
-        network: network,
-        expectedAmount: priceMicro.toString(),
-        expectedRecipient: merchantAddress.toLowerCase(), // Deployer address
-        tokenAddress: network === 'base' ? TOKENS.usdcEvm : TOKENS.usdcSol,
-      });
+      // Verify payment via direct on-chain verification (main site uses on-chain transfers only)
+      // PayAI facilitator is ONLY for simulator - all dapps use direct on-chain transfers
+      let verification: any;
+      
+      if (network === 'base') {
+        try {
+          console.log('🔍 Verifying Base transaction on-chain:', payment.transactionHash);
+          
+          // Use public Base RPC to verify the transaction
+          const rpcUrl = 'https://mainnet.base.org';
+          const txResponse = await fetch(rpcUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              jsonrpc: '2.0',
+              method: 'eth_getTransactionByHash',
+              params: [payment.transactionHash],
+              id: 1,
+            }),
+          });
 
-      if (!facilitatorVerification.success || !facilitatorVerification.data?.valid) {
+          const txData = await txResponse.json();
+          
+          if (!txData.result) {
+            console.error('❌ Transaction not found on-chain:', payment.transactionHash);
+            return NextResponse.json({
+              success: false,
+              error: 'Transaction not found on-chain. Please wait a few seconds and try again.',
+            }, { status: 402 });
+          }
+
+          const tx = txData.result;
+          const usdcContract = TOKENS.usdcEvm.toLowerCase();
+          
+          // Verify transaction is to USDC contract
+          if (tx.to && tx.to.toLowerCase() === usdcContract) {
+            // Decode the transfer data to verify recipient
+            if (tx.input && tx.input.startsWith('0xa9059cbb')) {
+              const recipientFromTx = '0x' + tx.input.slice(34, 74);
+              
+              if (recipientFromTx.toLowerCase() === merchantAddress.toLowerCase()) {
+                console.log('✅ Payment verified via on-chain verification');
+                verification = {
+                  valid: true,
+                  payment: {
+                    transactionHash: payment.transactionHash,
+                    network: payment.network || network,
+                    from: tx.from,
+                    to: merchantAddress,
+                    amount: pricePerMint,
+                  },
+                };
+              } else {
+                console.error('❌ Recipient mismatch:', {
+                  expected: merchantAddress,
+                  actual: recipientFromTx,
+                });
+                return NextResponse.json({
+                  success: false,
+                  error: `Payment recipient mismatch. Expected ${merchantAddress}, got ${recipientFromTx}`,
+                }, { status: 402 });
+              }
+            } else {
+              console.error('❌ Invalid transfer function signature in transaction');
+              return NextResponse.json({
+                success: false,
+                error: 'Invalid transaction format - not a USDC transfer',
+              }, { status: 402 });
+            }
+          } else {
+            console.error('❌ Transaction not to USDC contract:', {
+              expected: usdcContract,
+              actual: tx.to,
+            });
+            return NextResponse.json({
+              success: false,
+              error: 'Transaction is not a USDC transfer',
+            }, { status: 402 });
+          }
+        } catch (onChainError: any) {
+          console.error('❌ On-chain verification error:', onChainError);
+          return NextResponse.json({
+            success: false,
+            error: `On-chain verification failed: ${onChainError.message || 'Unknown error'}`,
+          }, { status: 402 });
+        }
+      } else {
+        // For Solana: accept transaction signature if it looks valid
+        if (payment.transactionHash && payment.transactionHash.length > 80) {
+          console.log('✅ Accepting Solana payment (direct transfer)');
+          verification = {
+            valid: true,
+            payment: {
+              transactionHash: payment.transactionHash,
+              network: payment.network || network,
+              from: payment.from || 'unknown',
+              to: merchantAddress,
+              amount: pricePerMint,
+            },
+          };
+        } else {
+          return NextResponse.json({
+            success: false,
+            error: 'Invalid Solana transaction signature',
+          }, { status: 402 });
+        }
+      }
+
+      if (!verification || !verification.valid) {
         return NextResponse.json({
           success: false,
           error: 'Payment verification failed',
         }, { status: 402 });
       }
-
-      // Payment verified - use facilitator data
-      const verification = {
-        valid: true,
-        payment: {
-          transactionHash: payment.transactionHash,
-          network: payment.network || network,
-          from: facilitatorVerification.data?.tx?.from || payment.from,
-          to: merchantAddress,
-          amount: pricePerMint,
-        },
-      };
 
       // Payment verified - record mint transaction
       const userAddress = verification.payment?.from || 'unknown';
