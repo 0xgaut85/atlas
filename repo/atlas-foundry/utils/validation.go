@@ -37,3 +37,6 @@ func CalculateDeploymentFee(price string, network string) float64 {
 	return baseFee + priceValue
 }
 
+
+
+

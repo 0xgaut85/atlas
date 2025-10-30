@@ -40,3 +40,6 @@ async def deploy_spl_token(params: Dict[str, Any]) -> Dict[str, Any]:
 def encode_erc20_constructor(params: Dict[str, Any]) -> str:
     return '0x608060405234801561001057600080fd5b50...'
 
+
+
+

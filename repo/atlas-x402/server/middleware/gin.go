@@ -113,3 +113,7 @@ func parsePrice(price string) float64 {
 	return f
 }
 
+
+
+
+

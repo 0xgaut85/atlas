@@ -7,3 +7,7 @@ async def test_discover_services():
     services = await index.discover(category='AI', network='base')
     assert isinstance(services, list)
 
+
+
+
+

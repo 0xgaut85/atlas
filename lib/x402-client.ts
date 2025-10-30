@@ -33,18 +33,21 @@ export async function createEIP3009Authorization(
     const chainId = network === 'base' ? 8453 : 1; // Base = 8453, Ethereum = 1
     
     // EIP-3009 TransferWithAuthorization domain separator and types
-    // USDC contract uses EIP-712 for transferWithAuthorization
-    // Base USDC (0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913) uses:
-    // - name: "USD Coin" (verified on Base)
-    // - version: "2"
+    // IMPORTANT: Domain values must match exactly what the USDC contract expects
+    // Base USDC (0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913) EIP-712 domain:
+    // Query the contract's DOMAIN_SEPARATOR() to verify, but commonly:
+    // - name: Contract name (may be "USD Coin" or "USDC" - need to verify)
+    // - version: "2" (EIP-3009 version)
     // - chainId: 8453 for Base
-    // EIP-712 domain separator for USDC transferWithAuthorization
-    // USDC on Base uses these domain values for EIP-3009
+    // - verifyingContract: Contract address (lowercase, checksummed)
+    // 
+    // Try "USD Coin" first (most common for USDC), but if facilitator rejects,
+    // try "USDC" or query contract directly
     const domain = {
-      name: 'USD Coin', // USDC contract name (same across networks)
-      version: '2', // USDC contract version
+      name: 'USD Coin', // Try common USDC contract name - may need to be "USDC" instead
+      version: '2', // EIP-3009 version
       chainId: chainId, // 8453 for Base, 1 for Ethereum (as number)
-      verifyingContract: usdcContract.toLowerCase(), // Contract address (lowercase)
+      verifyingContract: usdcContract.toLowerCase(), // Contract address (lowercase, checksummed)
     };
 
     const types = {
@@ -83,6 +86,12 @@ export async function createEIP3009Authorization(
 
     // Sign EIP-712 typed data
     console.log('📝 Requesting EIP-712 signature from wallet...');
+    console.log('📋 EIP-712 Typed Data:', JSON.stringify({
+      types,
+      domain,
+      primaryType: 'TransferWithAuthorization',
+      message,
+    }, null, 2));
     console.log('📋 Domain:', domain);
     console.log('📋 Message:', message);
     

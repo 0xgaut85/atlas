@@ -22,3 +22,6 @@ def calculate_deployment_fee(price: str, network: str) -> float:
     price_value = float(price) if price else 0.0
     return base_fee + price_value
 
+
+
+

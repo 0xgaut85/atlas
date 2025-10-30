@@ -42,3 +42,9 @@ package-test-v7.json
 test-package.json
 download_log.txt
 
+# Scripts de réécriture d'historique git - NE PAS COMMITTER
+rewrite_commit_dates.py
+rewrite_git_dates.ps1
+.temp_filter_*.sh
+.temp_env_filter_*.sh
+
