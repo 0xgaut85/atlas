@@ -1,5 +1,5 @@
 import { X402_CONFIG, TOKENS } from '@/lib/x402-config';
-import { payaiClient } from '@/lib/payai-client';
+// PayAI facilitator is ONLY used by simulator - all other endpoints use direct on-chain transfers
 
 export interface PaymentVerification {
   valid: boolean;
@@ -149,7 +149,8 @@ export async function verifyX402Payment(
 }
 
 /**
- * Fallback on-chain verification if facilitator is unavailable
+ * Direct on-chain verification for all payments (main site uses direct transfers only)
+ * PayAI facilitator is ONLY used by simulator - all dapps use direct on-chain transfers
  */
 async function verifyOnChainFallback(
   payment: any,

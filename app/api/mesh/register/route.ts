@@ -3,7 +3,7 @@ import { verifyX402Payment, create402Response } from '../../x402/middleware';
 import { upsertService } from '@/lib/atlas-tracking';
 import { recordPayment } from '@/lib/atlas-tracking';
 import { X402_CONFIG, TOKENS } from '@/lib/x402-config';
-import { payaiClient } from '@/lib/payai-client';
+// PayAI facilitator is ONLY used by simulator - all other endpoints use direct on-chain transfers
 
 /**
  * Atlas Mesh Service Registration Endpoint
@@ -107,43 +107,9 @@ export async function POST(req: NextRequest) {
       // Continue even if DB recording fails
     }
 
-    // Register service with PayAI facilitator for discovery on x402scan
-    try {
-      // Prepare registration data for facilitator
-      const registrationData = {
-        id: serviceId,
-        name,
-        description: description || '',
-        endpoint,
-        category: category || 'Other',
-        network: serviceNetwork,
-        merchantAddress: developerAddress.toLowerCase(),
-        accepts: [{
-          asset: serviceNetwork === 'base' ? TOKENS.usdcEvm : TOKENS.usdcSol,
-          payTo: developerAddress.toLowerCase(),
-          network: serviceNetwork,
-          maxAmountRequired: priceMicro,
-          scheme: serviceNetwork === 'base' ? 'exact' : 'exact',
-          mimeType: 'application/json',
-          description: description || `x402 service: ${name}`,
-          maxTimeoutSeconds: 60,
-        }],
-        metadata: metadata || {},
-      };
-
-      // Register with PayAI facilitator
-      // Note: The facilitator has a discovery endpoint, but registration might happen automatically
-      // when payment is verified. We'll still try to register explicitly.
-      console.log('📡 Registering service with PayAI facilitator...');
-      
-      // The facilitator auto-registers when payment is verified, but we can also
-      // try to register the service endpoint explicitly if needed
-      // For now, we rely on the facilitator's auto-registration via payment verification
-      
-    } catch (facilitatorError: any) {
-      console.error('Failed to register with facilitator:', facilitatorError.message);
-      // Continue even if facilitator registration fails - payment is already verified
-    }
+    // Service registration complete - PayAI facilitator will auto-discover services
+    // via x402scan when they receive payments. No explicit registration needed.
+    console.log('✅ Service registration complete - will appear on x402scan via auto-discovery');
 
     // Save service to database
     try {
