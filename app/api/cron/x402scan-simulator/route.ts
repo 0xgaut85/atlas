@@ -20,24 +20,43 @@ import { TOKENS } from '@/lib/x402-config';
 // Vercel Cron Job endpoint
 // Vercel automatically sends authorization header, but we can also verify manually
 export async function GET(request: NextRequest) {
+  // Log immediately when endpoint is called
+  console.log('🚀 [SIMULATOR] x402scan simulator endpoint called');
+  console.log('🚀 [SIMULATOR] Timestamp:', new Date().toISOString());
+  console.log('🚀 [SIMULATOR] Environment check:', {
+    hasPrivateKey: !!process.env.X402SCAN_SIMULATOR_PRIVATE_KEY,
+    hasCronSecret: !!process.env.CRON_SECRET,
+    nodeEnv: process.env.NODE_ENV,
+  });
+  
   // Vercel cron jobs include Authorization header automatically
   // For manual testing, you can also set CRON_SECRET
   const authHeader = request.headers.get('authorization');
   const cronSecret = process.env.CRON_SECRET;
   
+  console.log('🚀 [SIMULATOR] Auth check:', {
+    hasAuthHeader: !!authHeader,
+    hasCronSecret: !!cronSecret,
+    authHeaderPrefix: authHeader?.substring(0, 20) || 'none',
+  });
+  
   // Skip auth check if no secret is set (for development)
   // In production, Vercel will automatically add auth header
   if (cronSecret && authHeader && authHeader !== `Bearer ${cronSecret}`) {
+    console.error('❌ [SIMULATOR] Unauthorized - auth header mismatch');
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
   
   const simulatorPrivateKey = process.env.X402SCAN_SIMULATOR_PRIVATE_KEY;
   if (!simulatorPrivateKey) {
+    console.error('❌ [SIMULATOR] X402SCAN_SIMULATOR_PRIVATE_KEY not configured');
     return NextResponse.json({ 
       error: 'X402SCAN_SIMULATOR_PRIVATE_KEY not configured',
       note: 'Set this in Vercel environment variables with a wallet private key that has USDC'
     }, { status: 500 });
   }
+  
+  console.log('✅ [SIMULATOR] Configuration valid, starting simulator...');
   
   try {
     // Setup wallet
@@ -334,6 +353,14 @@ export async function GET(request: NextRequest) {
     
     const successCount = results.filter(r => r.success).length;
     
+    console.log('✅ [SIMULATOR] Completed:', {
+      total: results.length,
+      successful: successCount,
+      failed: results.length - successCount,
+      successRate: `${((successCount / results.length) * 100).toFixed(1)}%`,
+      timestamp: new Date().toISOString(),
+    });
+    
     return NextResponse.json({
       success: true,
       timestamp: new Date().toISOString(),
@@ -348,10 +375,16 @@ export async function GET(request: NextRequest) {
       note: `Made ${results.length} payments with 1-5s delays. Successful payments will appear on x402scan after facilitator sync (~5-15 minutes)`,
     });
   } catch (error: any) {
+    console.error('❌ [SIMULATOR] Fatal error:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name,
+    });
     return NextResponse.json({
       success: false,
       error: error.message,
-      stack: error.stack,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+      timestamp: new Date().toISOString(),
     }, { status: 500 });
   }
 }
