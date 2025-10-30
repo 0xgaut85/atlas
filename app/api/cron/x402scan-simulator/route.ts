@@ -145,9 +145,9 @@ export async function GET(request: NextRequest) {
         ).join('');
         
         // CRITICAL: validAfter must be <= current block time
-        // Set it to 10 seconds ago to account for block time differences
+        // Set it to 60 seconds ago to account for block time differences and delays
         const now = Math.floor(Date.now() / 1000);
-        const validAfter = now - 10; // 10 seconds ago to ensure it's valid
+        const validAfter = now - 60; // 60 seconds ago to ensure it's always valid
         const validBefore = now + 3600; // 1 hour from now
         
         const message = {
@@ -237,17 +237,20 @@ export async function GET(request: NextRequest) {
         
         console.log('🔍 PayAI Facilitator Settle Response:', {
           status: settleResponse.status,
+          transaction: settleData.transaction,
           txHash: settleData.txHash,
           success: settleData.success,
           fullResponse: settleData,
         });
         
-        if (!settleResponse.ok || !settleData.txHash) {
+        // PayAI facilitator returns transaction hash in 'transaction' field, not 'txHash'
+        const txHash = settleData.transaction || settleData.txHash;
+        
+        if (!settleResponse.ok || !txHash) {
           return { success: false, error: `Settlement failed: ${settleData.error || 'No transaction hash'}` };
         }
         
         // Step 4: Notify our server with facilitator's actual transaction hash
-        const txHash = settleData.txHash;
         const serverPaymentPayload = {
           x402Version: 1,
           scheme: 'exact',
