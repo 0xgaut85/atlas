@@ -232,16 +232,24 @@ class PayAIClient {
         paymentRequirements: paymentRequirements,
       };
 
-      console.log('🔍 PayAI Facilitator Request:', {
+      // CRITICAL DEBUG: Log EVERY detail of what we're sending to facilitator
+      console.log('🔍 PayAI Facilitator Request (FULL DETAILS):', {
         url: `${this.facilitatorUrl}/verify`,
         format: 'paymentPayload + paymentRequirements (direct JSON)',
-        paymentPayloadStructure: {
-          x402Version: paymentPayload.x402Version,
-          scheme: paymentPayload.scheme,
-          network: paymentPayload.network,
-          hasSignature: !!paymentPayload.payload?.signature,
-          hasAuthorization: !!paymentPayload.payload?.authorization,
-        },
+        paymentPayload: JSON.parse(JSON.stringify(paymentPayload)), // Deep clone for logging
+        paymentRequirements: JSON.parse(JSON.stringify(paymentRequirements)), // Deep clone for logging
+        authorizationDetails: paymentData.authorization ? {
+          from: paymentData.authorization.from,
+          to: paymentData.authorization.to,
+          value: paymentData.authorization.value,
+          validAfter: paymentData.authorization.validAfter,
+          validBefore: paymentData.authorization.validBefore,
+          nonce: paymentData.authorization.nonce,
+          fromIsChecksummed: paymentData.authorization.from === paymentData.authorization.from.match(/^0x[a-fA-F0-9]{40}$/) ? 'yes' : 'no',
+          toIsChecksummed: paymentData.authorization.to === paymentData.authorization.to.match(/^0x[a-fA-F0-9]{40}$/) ? 'yes' : 'no',
+        } : null,
+        signaturePreview: paymentData.signature ? `${paymentData.signature.substring(0, 20)}...${paymentData.signature.substring(paymentData.signature.length - 10)}` : null,
+        signatureLength: paymentData.signature?.length || 0,
       });
 
       const response = await fetch(`${this.facilitatorUrl}/verify`, {

@@ -70,16 +70,13 @@ export async function createEIP3009Authorization(
     const chainId = network === 'base' ? 8453 : 1; // Base = 8453, Ethereum = 1
     
     // EIP-3009 TransferWithAuthorization domain separator and types
-    // CRITICAL: PayAI's x402 library uses extra.name and extra.version from paymentRequirements!
-    // Source: node_modules/x402/dist/esm/chunk-QN6E5BAP.mjs line 67-68:
-    //   const name = extra?.name;
-    //   const version = extra?.version;
-    // 
+    // CRITICAL: PayAI facilitator uses extra.name and extra.version from paymentRequirements
+    // to construct the EIP-712 domain for signature validation.
     // Our create402Response sends: extra: { name: 'USDC', version: '2' }
-    // So we MUST use extra.name="USDC" (not "USD Coin") to match PayAI's implementation
-    // PayAI facilitator validates signatures using the same domain values as their library
-    const domainName = extra?.name || 'USDC'; // Use extra.name from paymentRequirements (matches PayAI library)
-    const domainVersion = extra?.version || '2'; // Use extra.version from paymentRequirements (matches PayAI library)
+    // So we MUST use the SAME values when signing to match facilitator's validation.
+    // Note: The actual Base USDC contract uses "USD Coin", but PayAI facilitator uses extra.name
+    const domainName = extra?.name || 'USDC'; // Use extra.name from paymentRequirements (matches PayAI facilitator)
+    const domainVersion = extra?.version || '2'; // Use extra.version from paymentRequirements (matches PayAI facilitator)
     
     // Use viem's getAddress() to checksum addresses (exactly like PayAI's library)
     // This ensures addresses match PayAI's format for EIP-712 signature validation
@@ -135,14 +132,38 @@ export async function createEIP3009Authorization(
 
     // Sign EIP-712 typed data
     console.log('📝 Requesting EIP-712 signature from wallet...');
-    console.log('📋 EIP-712 Typed Data:', JSON.stringify({
+    
+    // CRITICAL DEBUG: Log exact structure that will be signed
+    const typedDataToSign = {
       types,
       domain,
       primaryType: 'TransferWithAuthorization',
       message,
-    }, null, 2));
-    console.log('📋 Domain:', domain);
-    console.log('📋 Message:', message);
+    };
+    
+    console.log('📋 EIP-712 Typed Data (EXACT STRUCTURE):', JSON.stringify(typedDataToSign, null, 2));
+    console.log('📋 Domain (VERIFYING):', {
+      name: domain.name,
+      version: domain.version,
+      chainId: domain.chainId,
+      chainIdType: typeof domain.chainId,
+      verifyingContract: domain.verifyingContract,
+      verifyingContractIsChecksummed: domain.verifyingContract === getAddress(domain.verifyingContract),
+    });
+    console.log('📋 Message (VERIFYING):', {
+      from: message.from,
+      fromIsChecksummed: message.from === getAddress(message.from),
+      to: message.to,
+      toIsChecksummed: message.to === getAddress(message.to),
+      value: message.value,
+      valueType: typeof message.value,
+      validAfter: message.validAfter,
+      validAfterType: typeof message.validAfter,
+      validBefore: message.validBefore,
+      validBeforeType: typeof message.validBefore,
+      nonce: message.nonce,
+      nonceFormat: message.nonce.startsWith('0x') ? 'hex' : 'invalid',
+    });
     
     let signature: string;
     try {
@@ -172,20 +193,37 @@ export async function createEIP3009Authorization(
     }
 
     console.log('✅ EIP-3009 authorization signature created');
+    console.log('📋 Signature details:', {
+      signature: signature.substring(0, 20) + '...' + signature.substring(signature.length - 10),
+      signatureLength: signature.length,
+      signatureFormat: signature.startsWith('0x') ? 'hex' : 'invalid',
+    });
 
     // Authorization object for PayAI facilitator
     // CRITICAL: Addresses MUST be checksummed (same as what we signed in the message)
     // PayAI facilitator validates the signature against these exact values
+    const authorization = {
+      from: getAddress(from), // MUST be checksummed (matches what we signed)
+      to: getAddress(recipient), // MUST be checksummed (matches what we signed)
+      value: amountMicro.toString(), // Decimal string (like "1000000")
+      validAfter: validAfter.toString(), // Decimal string (like "1761805100")
+      validBefore: validBefore.toString(), // Decimal string (like "1761808700")
+      nonce: nonceHex, // Hex string (0x...)
+    };
+    
+    console.log('📋 Authorization object (FINAL):', {
+      ...authorization,
+      fromIsChecksummed: authorization.from === getAddress(authorization.from),
+      toIsChecksummed: authorization.to === getAddress(authorization.to),
+      valueType: typeof authorization.value,
+      validAfterType: typeof authorization.validAfter,
+      validBeforeType: typeof authorization.validBefore,
+      nonceFormat: authorization.nonce.startsWith('0x') ? 'hex' : 'invalid',
+    });
+    
     return {
       signature,
-      authorization: {
-        from: getAddress(from), // MUST be checksummed (matches what we signed)
-        to: getAddress(recipient), // MUST be checksummed (matches what we signed)
-        value: amountMicro.toString(), // Decimal string (like "1000000")
-        validAfter: validAfter.toString(), // Decimal string (like "1761805100")
-        validBefore: validBefore.toString(), // Decimal string (like "1761808700")
-        nonce: nonceHex, // Hex string (0x...)
-      },
+      authorization,
     };
   } catch (error: any) {
     console.error('EIP-3009 authorization failed:', error);

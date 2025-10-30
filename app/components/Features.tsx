@@ -26,7 +26,7 @@ export default function Features() {
           </p>
         </motion.div>
 
-          {/* Split Background Container */}
+        {/* Split Background Container */}
         <div className="relative flex flex-col md:flex-row min-h-[800px] sm:min-h-[1000px] md:min-h-[1000px]">
           {/* Left Half - All 4 Boxes */}
           <div className="flex-1 bg-white relative">
