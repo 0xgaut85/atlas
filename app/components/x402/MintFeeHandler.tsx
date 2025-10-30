@@ -69,12 +69,42 @@ export function MintFeeHandler({ network, service, onSuccess, onError }: MintFee
         try {
           // Extract contract address from service ID (format: "token-{contractAddress}")
           // For tokens in Foundry, always use your own mint endpoint
-          const contractAddress = service.id.startsWith('token-') 
-            ? service.id.replace('token-', '')
-            : service.metadata?.contractAddress || service.endpoint?.match(/token\/(0x[a-fA-F0-9]{40}|[1-9A-HJ-NP-Za-km-z]{32,44})/)?.[1];
+          console.log('🔍 Extracting contract address from service:', {
+            id: service.id,
+            endpoint: service.endpoint,
+            metadata: service.metadata,
+          });
+          
+          let contractAddress: string | undefined;
+          
+          // Try multiple extraction methods
+          if (service.id && service.id.startsWith('token-')) {
+            contractAddress = service.id.replace('token-', '');
+            console.log('✅ Found contract address from service.id:', contractAddress);
+          } else if (service.metadata?.contractAddress) {
+            contractAddress = service.metadata.contractAddress;
+            console.log('✅ Found contract address from metadata:', contractAddress);
+          } else if (service.endpoint) {
+            // Try to extract from endpoint URL pattern: /api/token/{address}/mint
+            const endpointMatch = service.endpoint.match(/token\/(0x[a-fA-F0-9]{40}|[1-9A-HJ-NP-Za-km-z]{32,44})/i);
+            if (endpointMatch && endpointMatch[1]) {
+              contractAddress = endpointMatch[1];
+              console.log('✅ Found contract address from endpoint:', contractAddress);
+            }
+          }
+          
+          // Additional fallback: check if service.id contains a valid address pattern
+          if (!contractAddress && service.id) {
+            const idMatch = service.id.match(/(0x[a-fA-F0-9]{40}|[1-9A-HJ-NP-Za-km-z]{32,44})/i);
+            if (idMatch && idMatch[1]) {
+              contractAddress = idMatch[1];
+              console.log('✅ Found contract address from service.id pattern:', contractAddress);
+            }
+          }
           
           if (!contractAddress) {
-            throw new Error('Could not determine contract address for token mint');
+            console.error('❌ Service details:', JSON.stringify(service, null, 2));
+            throw new Error(`Could not determine contract address for token mint. Service ID: ${service.id}, Endpoint: ${service.endpoint || 'N/A'}`);
           }
           
           // Use YOUR OWN mint endpoint, not the external service endpoint

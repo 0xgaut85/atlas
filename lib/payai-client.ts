@@ -172,20 +172,25 @@ class PayAIClient {
 
   /**
    * Verify a payment via PayAI facilitator
-   * PayAI facilitator /verify endpoint: { paymentPayload, paymentRequirements }
-   * We'll try using transactionHash instead of EIP-3009 authorization
+   * IMPORTANT: PayAI facilitator /verify endpoint ONLY supports EIP-3009 authorization format
+   * (signature + authorization object), NOT regular transactionHash verification
+   * 
+   * Since we're using regular USDC transfers (not EIP-3009), facilitator verification will fail
+   * However, USDC is ALREADY received on-chain before verification
+   * We still attempt facilitator verification for merchant registration, but fallback to on-chain verification
    */
   async verifyPayment(paymentData: any): Promise<FacilitatorResponse<any>> {
     try {
-      // Try format that PayAI facilitator might accept for transaction hash verification
-      // Structure: { paymentPayload: {...}, paymentRequirements: {...} }
+      // PayAI facilitator expects EIP-3009 format: { signature, authorization: { from, to, value, ... } }
+      // We're sending transactionHash which won't work, but we try anyway
+      // This ensures we get proper error messages and can fallback gracefully
       
       const paymentPayload = {
         x402Version: 1,
         scheme: 'exact',
         network: paymentData.network,
         payload: {
-          transactionHash: paymentData.txHash, // Use transactionHash for regular transfers
+          transactionHash: paymentData.txHash, // PayAI facilitator doesn't support this for "exact" scheme
           amount: String(paymentData.expectedAmount),
           to: paymentData.expectedRecipient?.toLowerCase(),
           from: paymentData.from, // Include if available
