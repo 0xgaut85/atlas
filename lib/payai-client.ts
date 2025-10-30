@@ -177,16 +177,15 @@ class PayAIClient {
   async verifyPayment(paymentData: any): Promise<FacilitatorResponse<any>> {
     try {
       // PayAI facilitator expects x402 format with paymentHeader
-      // Create payment payload in x402 format
+      // PaymentPayload structure: { x402Version, scheme, network, payload: { transactionHash, amount, ... } }
       const paymentPayload = {
+        x402Version: 1,
         scheme: paymentData.network === 'base' ? 'x402+eip712' : 'x402+solana',
         network: paymentData.network,
         payload: {
           transactionHash: paymentData.txHash,
-          network: paymentData.network,
           amount: String(paymentData.expectedAmount),
-          from: '', // Will be filled by facilitator
-          to: paymentData.expectedRecipient?.toLowerCase(),
+          // from and to are optional - facilitator will extract from transaction
         },
       };
 
