@@ -137,15 +137,6 @@ export default function Navbar() {
                   >
                     $ATLAS Mint
                   </Link>
-                  <a
-                    href="https://dexscreener.com/solana/5kwqfa3rtzrdiyvfyspemnyudhbzmilbucyd1em4rrzs"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block px-4 py-3 text-sm font-light text-gray-700 hover:bg-gray-50 hover:text-black transition-colors border-b border-black/10"
-                    onClick={() => setNovaDropdownOpen(false)}
-                  >
-                    Dexscreener
-                  </a>
                   <div className="px-4 py-3 text-xs">
                     <div className="text-gray-500 mb-1">Contract Address</div>
                     <div className="font-mono text-gray-300 break-all">
@@ -229,14 +220,6 @@ export default function Navbar() {
               >
                 Atlas Hub
               </Link>
-              <a 
-                href="https://dexscreener.com/solana/5kwqfa3rtzrdiyvfyspemnyudhbzmilbucyd1em4rrzs" 
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-gray-600 hover:text-black transition-colors duration-300 py-3 px-2 font-light min-h-[44px] flex items-center"
-              >
-                $ATLAS
-              </a>
               <Link 
                 href="/roadmap" 
                 className="text-gray-600 hover:text-black transition-colors duration-300 py-3 px-2 font-light min-h-[44px] flex items-center"
