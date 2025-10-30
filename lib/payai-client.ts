@@ -220,11 +220,81 @@ class PayAIClient {
         };
       }
 
-      // If simple format fails with 400, try x402 format as fallback
+      // If simple format fails with 400, try x402 format with "exact" scheme
       if (response.status === 400) {
-        console.log('⚠️ Simple format rejected, trying x402 format...');
+        console.log('⚠️ Simple format rejected, trying x402 format with "exact" scheme...');
         
-        // PayAI facilitator x402 format: x402Version, paymentHeader (base64), paymentRequirements
+        const paymentPayload = {
+          x402Version: 1,
+          scheme: 'exact',
+          network: paymentData.network,
+          payload: {
+            transactionHash: paymentData.txHash,
+            amount: String(paymentData.expectedAmount),
+            to: paymentData.expectedRecipient?.toLowerCase(),
+          },
+        };
+
+        const paymentHeader = Buffer.from(JSON.stringify(paymentPayload)).toString('base64');
+        
+        console.log('🔍 Decoded PaymentPayload (x402 exact):', JSON.stringify(paymentPayload, null, 2));
+        
+        const paymentRequirements = {
+          scheme: 'exact',
+          network: paymentData.network,
+          maxAmountRequired: String(paymentData.expectedAmount),
+          payTo: paymentData.expectedRecipient?.toLowerCase(),
+          asset: paymentData.tokenAddress?.toLowerCase(),
+        };
+
+        const x402Payload = {
+          x402Version: 1,
+          paymentHeader: paymentHeader,
+          paymentRequirements: paymentRequirements,
+        };
+
+        console.log('🔍 PayAI Facilitator Request (x402 Format - exact):', {
+          url: `${this.facilitatorUrl}/verify`,
+          payload: {
+            x402Version: x402Payload.x402Version,
+            paymentHeader: paymentHeader.substring(0, 100) + '...',
+            paymentRequirements: x402Payload.paymentRequirements,
+          },
+        });
+
+        response = await fetch(`${this.facilitatorUrl}/verify`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          body: JSON.stringify(x402Payload),
+        });
+
+        data = await response.json();
+        
+        console.log('🔍 PayAI Facilitator Response (x402 Format - exact):', {
+          status: response.status,
+          statusText: response.statusText,
+          data: data,
+        });
+
+        if (response.ok && (data.isValid === true || data.valid === true)) {
+          console.log('✅ Payment verified via PayAI facilitator (x402 exact format)');
+          return {
+            success: true,
+            data: {
+              valid: true,
+              ...data,
+            },
+          };
+        }
+      }
+
+      // If still failing, try with "x402+eip712" scheme as last resort
+      if (response.status === 400) {
+        console.log('⚠️ x402 exact format rejected, trying x402+eip712 scheme...');
+        
         const paymentPayload = {
           x402Version: 1,
           scheme: paymentData.network === 'base' ? 'x402+eip712' : 'x402+solana',
@@ -252,15 +322,6 @@ class PayAIClient {
           paymentRequirements: paymentRequirements,
         };
 
-        console.log('🔍 PayAI Facilitator Request (x402 Format):', {
-          url: `${this.facilitatorUrl}/verify`,
-          payload: {
-            x402Version: x402Payload.x402Version,
-            paymentHeader: paymentHeader.substring(0, 100) + '...',
-            paymentRequirements: x402Payload.paymentRequirements,
-          },
-        });
-
         response = await fetch(`${this.facilitatorUrl}/verify`, {
           method: 'POST',
           headers: {
@@ -272,7 +333,7 @@ class PayAIClient {
 
         data = await response.json();
         
-        console.log('🔍 PayAI Facilitator Response (x402 Format):', {
+        console.log('🔍 PayAI Facilitator Response (x402 Format - x402+eip712):', {
           status: response.status,
           statusText: response.statusText,
           data: data,
