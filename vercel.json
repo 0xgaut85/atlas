@@ -17,6 +17,12 @@
         }
       ]
     }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/x402scan-simulator",
+      "schedule": "0 * * * *"
+    }
   ]
 }
 
