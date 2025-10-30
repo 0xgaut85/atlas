@@ -225,14 +225,27 @@ class PayAIClient {
         extra: paymentData.network === 'base' ? { name: 'USDC', version: '2' } : null,
       };
 
+      // PayAI facilitator expects x402 format with paymentHeader (base64-encoded)
+      // Based on facilitator API docs: { x402Version: 1, paymentHeader: "base64...", paymentRequirements: {...} }
+      const paymentHeaderB64 = Buffer.from(JSON.stringify(paymentPayload)).toString('base64');
+      
       const requestPayload = {
-        paymentPayload: paymentPayload,
+        x402Version: 1,
+        paymentHeader: paymentHeaderB64, // Base64-encoded paymentPayload (PayAI facilitator format)
         paymentRequirements: paymentRequirements,
       };
 
       console.log('🔍 PayAI Facilitator Request:', {
         url: `${this.facilitatorUrl}/verify`,
-        payload: requestPayload,
+        format: 'x402 with paymentHeader (base64)',
+        paymentPayloadStructure: {
+          x402Version: paymentPayload.x402Version,
+          scheme: paymentPayload.scheme,
+          network: paymentPayload.network,
+          hasSignature: !!paymentPayload.payload?.signature,
+          hasAuthorization: !!paymentPayload.payload?.authorization,
+        },
+        paymentHeaderLength: paymentHeaderB64.length,
       });
 
       const response = await fetch(`${this.facilitatorUrl}/verify`, {
