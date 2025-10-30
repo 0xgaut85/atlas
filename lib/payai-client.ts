@@ -258,11 +258,15 @@ class PayAIClient {
       console.log('🔍 PayAI Facilitator Response:', {
         status: response.status,
         statusText: response.statusText,
-        data: data,
+        isValid: data.isValid,
+        valid: data.valid,
+        invalidReason: data.invalidReason,
+        payer: data.payer,
+        fullData: data,
       });
       
       if (!response.ok) {
-        console.error('❌ Facilitator verification failed:', {
+        console.error('❌ Facilitator verification failed (HTTP error):', {
           status: response.status,
           error: data.error || data.message || data.invalidReason || 'Unknown error',
           fullResponse: data,
@@ -272,6 +276,15 @@ class PayAIClient {
       }
       
       const isValid = data.isValid === true || data.valid === true;
+      
+      if (response.ok && !isValid) {
+        console.error('❌ Facilitator verification failed (isValid=false):', {
+          invalidReason: data.invalidReason || 'No reason provided',
+          payer: data.payer,
+          fullResponse: data,
+        });
+        console.error('❌ Full request sent:', JSON.stringify(requestPayload, null, 2));
+      }
       
       return {
         success: response.ok && isValid,
