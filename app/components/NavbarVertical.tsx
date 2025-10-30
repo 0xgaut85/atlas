@@ -25,7 +25,7 @@ const items: NavItem[] = [
   { label: 'Atlas Operator', href: '/workspace/atlas-operator', type: 'access' },
   { label: 'Atlas Explorer', href: '#', type: 'access', disabled: true },
   { label: 'Docs', href: '/docs', type: 'learn' },
-  { label: 'Dexscreener', href: 'https://dexscreener.com/solana/5kwqfa3rtzrdiyvfyspemnyudhbzmilbucyd1em4rrzs', type: 'visit', external: true },
+  { label: 'Dexscreener', href: 'https://dexscreener.com/', type: 'visit', external: true },
   { label: 'CoinGecko', href: '#', type: 'visit', disabled: true },
   { label: 'CoinMarketCap', href: '#', type: 'visit', disabled: true },
   { label: 'Roadmap', href: '/roadmap', type: 'learn' },
@@ -91,7 +91,7 @@ export default function NavbarVertical() {
   );
 
   return (
-    <div className="fixed right-0 top-1/2 -translate-y-1/2 z-50 pr-2">
+    <div className="hidden md:block fixed right-0 top-1/2 -translate-y-1/2 z-50 pr-2">
       <ul className="flex flex-col items-end gap-2">
         {renderGroup('access')}
         <li className="w-56"><div className="w-full h-px bg-red-600 my-2" /></li>

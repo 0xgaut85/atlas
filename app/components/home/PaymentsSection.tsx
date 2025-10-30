@@ -7,7 +7,7 @@ import MagneticButton from '../motion/MagneticButton';
 
 export default function PaymentsSection() {
   return (
-    <section className="relative py-20 md:py-28 lg:py-36 overflow-hidden">
+    <section className="relative py-12 sm:py-16 md:py-28 lg:py-36 overflow-hidden">
       {/* Split Background Container */}
       <div className="relative flex flex-col md:flex-row min-h-[600px]">
         {/* Left Half - White Background */}
@@ -20,10 +20,10 @@ export default function PaymentsSection() {
                 viewport={{ once: true }}
                 transition={{ duration: 0.6 }}
               >
-                <h2 className="text-4xl sm:text-5xl md:text-6xl font-bold text-black mb-6 font-title tracking-tight">
+                <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-black mb-4 sm:mb-6 font-title tracking-tight">
                   x402 Payment Protocol
                 </h2>
-                <p className="text-xl text-gray-700 mb-8 leading-relaxed">
+                <p className="text-lg sm:text-xl text-gray-700 mb-6 sm:mb-8 leading-relaxed">
                   HTTP-native micropayments for every API request. No subscriptions, no fraud, instant settlement.
                 </p>
 
@@ -101,7 +101,7 @@ export default function PaymentsSection() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.6, delay: 0.2 }}
-                className="bg-white p-8 border-2 border-dashed border-black relative"
+                className="bg-white p-6 sm:p-8 border-2 border-dashed border-black relative"
               >
                 <div>
                   <div className="text-sm text-gray-500 uppercase tracking-wider mb-2">Pricing</div>
@@ -125,7 +125,7 @@ export default function PaymentsSection() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.6, delay: 0.4 }}
-                className="bg-white p-8 border-2 border-dashed border-black relative"
+                className="bg-white p-6 sm:p-8 border-2 border-dashed border-black relative"
               >
                 <div>
                   <div className="text-sm text-gray-500 uppercase tracking-wider mb-2">Session Model</div>

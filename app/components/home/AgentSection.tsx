@@ -7,7 +7,7 @@ import MagneticButton from '../motion/MagneticButton';
 
 export default function AgentSection() {
   return (
-    <section className="relative py-20 md:py-28 lg:py-36 px-6 bg-white">
+    <section className="relative py-12 sm:py-16 md:py-28 lg:py-36 px-4 sm:px-6 bg-white">
       <div className="max-w-7xl mx-auto">
         <div className="grid md:grid-cols-2 gap-12 items-center">
           {/* Left: Heading and Description */}
@@ -17,13 +17,13 @@ export default function AgentSection() {
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
           >
-            <h2 className="text-4xl sm:text-5xl md:text-6xl font-bold text-black mb-6 font-title tracking-tight">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-black mb-4 sm:mb-6 font-title tracking-tight">
               Atlas Operator
             </h2>
-            <p className="text-xl text-gray-700 mb-6 leading-relaxed">
+            <p className="text-lg sm:text-xl text-gray-700 mb-4 sm:mb-6 leading-relaxed">
               An AI agent that executes blockchain transactions with your approval. Built on Anthropic Claude, secured by x402 payments.
             </p>
-            <p className="text-gray-600 mb-8 leading-relaxed">
+            <p className="text-base sm:text-lg text-gray-600 mb-6 sm:mb-8 leading-relaxed">
               The agent can discover services, initiate payments, and handle complex multi-step workflows—all while keeping you in control with transaction guardrails and approval prompts.
             </p>
 
@@ -50,7 +50,7 @@ export default function AgentSection() {
           >
             <motion.div
               variants={staggerItem}
-              className="bg-gray-50 p-6 border-2 border-dashed border-black relative h-[140px] flex items-center"
+              className="bg-gray-50 p-4 sm:p-6 border-2 border-dashed border-black relative min-h-[120px] sm:h-[140px] flex items-center"
             >
               <div className="w-full">
                 <div className="flex items-start gap-4">
@@ -69,7 +69,7 @@ export default function AgentSection() {
 
             <motion.div
               variants={staggerItem}
-              className="bg-gray-50 p-6 border-2 border-dashed border-black relative h-[140px] flex items-center"
+              className="bg-gray-50 p-4 sm:p-6 border-2 border-dashed border-black relative min-h-[120px] sm:h-[140px] flex items-center"
             >
               <div className="w-full">
                 <div className="flex items-start gap-4">
@@ -88,7 +88,7 @@ export default function AgentSection() {
 
             <motion.div
               variants={staggerItem}
-              className="bg-gray-50 p-6 border-2 border-dashed border-black relative h-[140px] flex items-center"
+              className="bg-gray-50 p-4 sm:p-6 border-2 border-dashed border-black relative min-h-[120px] sm:h-[140px] flex items-center"
             >
               <div className="w-full">
                 <div className="flex items-start gap-4">

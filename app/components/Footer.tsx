@@ -2,7 +2,7 @@ import Link from 'next/link';
 
 export default function Footer() {
   return (
-    <footer className="relative border-t border-black/10 py-20 px-6 overflow-hidden bg-gray-50">
+    <footer className="relative border-t border-black/10 py-12 sm:py-16 md:py-20 px-4 sm:px-6 overflow-hidden bg-gray-50">
       {/* Subtle grain texture */}
       <div
         className="absolute inset-0 opacity-[0.03] pointer-events-none"
@@ -14,11 +14,11 @@ export default function Footer() {
       />
       
       <div className="max-w-7xl mx-auto relative z-10">
-        <div className="grid md:grid-cols-4 gap-12 mb-16">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8 sm:gap-10 md:gap-12 mb-12 sm:mb-16">
           {/* Brand */}
           <div className="md:col-span-2">
-            <h3 className="text-3xl font-bold mb-5 tracking-tight text-black font-title">Atlas402</h3>
-            <p className="text-gray-600 leading-relaxed font-light text-base max-w-md">
+            <h3 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-5 tracking-tight text-black font-title">Atlas402</h3>
+            <p className="text-gray-600 leading-relaxed font-light text-sm sm:text-base max-w-md">
               The infrastructure layer for pay-per-request digital services. Built on open standards, powered by blockchain technology.
             </p>
           </div>

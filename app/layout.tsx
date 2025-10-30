@@ -1,10 +1,16 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { headers } from 'next/headers';
 import Link from "next/link";
 import Image from "next/image";
 import "./globals.css";
 import { WalletProvider } from "./components/WalletProvider";
 import NavbarVertical from "./components/NavbarVertical";
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
+};
 
 export const metadata: Metadata = {
   title: "Atlas402",
@@ -66,8 +72,8 @@ export default async function RootLayout({
       </head>
       <body className="antialiased">
         {/* Fixed bottom-right brand logo (site-wide) */}
-        <Link href="/" aria-label="Atlas402 Home" className="fixed bottom-4 left-4 lg:left-auto lg:right-4 z-[60] block p-2 bg-black rounded-xl hover:bg-red-600 transition-all duration-300 shadow-lg">
-          <Image src="/logosvg.svg" alt="Atlas402" width={80} height={80} priority className="w-[60px] h-auto md:w-[80px]" />
+        <Link href="/" aria-label="Atlas402 Home" className="fixed bottom-3 left-3 sm:bottom-4 sm:left-4 lg:left-auto lg:right-4 z-[60] block p-1.5 sm:p-2 bg-black rounded-xl hover:bg-red-600 transition-all duration-300 shadow-lg">
+          <Image src="/logosvg.svg" alt="Atlas402" width={80} height={80} priority className="w-[50px] sm:w-[60px] h-auto md:w-[80px]" />
         </Link>
         
         {/* Fixed right-side vertical nav (site-wide) */}

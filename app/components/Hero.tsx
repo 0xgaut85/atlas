@@ -33,7 +33,7 @@ export default function Hero() {
 
       <div className="relative z-10 w-full h-full flex items-center max-w-7xl mx-auto">
         {/* Bold Asymmetric Layout - Nillion Inspired */}
-        <div className="w-full px-6 lg:px-12">
+        <div className="w-full px-4 sm:px-6 lg:px-12">
           {/* Large Bold Headline */}
           <motion.h1
             initial={{ opacity: 0, y: 50 }}
@@ -59,12 +59,12 @@ export default function Hero() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.5 }}
-            className="flex flex-col sm:flex-row gap-4"
+            className="flex flex-col sm:flex-row gap-3 sm:gap-4"
           >
             <MagneticButton>
               <Link 
                 href="/dapp"
-                className="group inline-flex items-center justify-center gap-3 px-8 py-4 bg-red-600 text-white font-medium rounded-lg transition-all duration-300 hover:bg-red-700 hover:shadow-lg hover:scale-[1.02] text-lg"
+                className="group inline-flex items-center justify-center gap-2 sm:gap-3 px-6 sm:px-8 py-3 sm:py-4 bg-red-600 text-white font-medium rounded-lg transition-all duration-300 hover:bg-red-700 hover:shadow-lg hover:scale-[1.02] text-base sm:text-lg"
               >
                 <span>Launch Atlas Hub</span>
                 <svg className="w-5 h-5 transition-transform duration-300 group-hover:translate-x-1 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -75,7 +75,7 @@ export default function Hero() {
             <MagneticButton>
               <Link 
                 href="/docs"
-                className="group inline-flex items-center justify-center gap-3 px-8 py-4 bg-white text-black font-medium rounded-lg border-2 border-black transition-all duration-300 hover:bg-black hover:text-white hover:shadow-lg hover:scale-[1.02] text-lg"
+                className="group inline-flex items-center justify-center gap-2 sm:gap-3 px-6 sm:px-8 py-3 sm:py-4 bg-white text-black font-medium rounded-lg border-2 border-black transition-all duration-300 hover:bg-black hover:text-white hover:shadow-lg hover:scale-[1.02] text-base sm:text-lg"
               >
                 <span>Explore Docs</span>
                 <svg className="w-5 h-5 transition-transform duration-300 group-hover:translate-x-1 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -90,22 +90,22 @@ export default function Hero() {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.7 }}
-            className="mt-24 grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-4xl"
+            className="mt-16 sm:mt-20 md:mt-24 grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 max-w-4xl"
           >
-            <div className="bg-transparent backdrop-blur-sm p-6 text-center border border-dashed border-white/30 h-full">
-              <div className="text-3xl font-bold mb-2 text-white">x402</div>
+            <div className="bg-transparent backdrop-blur-sm p-4 sm:p-6 text-center border border-dashed border-white/30 h-full">
+              <div className="text-2xl sm:text-3xl font-bold mb-2 text-white">x402</div>
               <div className="text-xs text-gray-300 font-light">Protocol</div>
             </div>
-            <div className="bg-transparent backdrop-blur-sm p-6 text-center border border-dashed border-white/30 h-full">
-              <div className="text-3xl font-bold mb-2 text-white">2 Chains</div>
+            <div className="bg-transparent backdrop-blur-sm p-4 sm:p-6 text-center border border-dashed border-white/30 h-full">
+              <div className="text-2xl sm:text-3xl font-bold mb-2 text-white">2 Chains</div>
               <div className="text-xs text-gray-300 font-light">Live</div>
             </div>
-            <div className="bg-transparent backdrop-blur-sm p-6 text-center border border-dashed border-white/30 h-full">
-              <div className="text-3xl font-bold mb-2 text-white">6 Utilities</div>
+            <div className="bg-transparent backdrop-blur-sm p-4 sm:p-6 text-center border border-dashed border-white/30 h-full">
+              <div className="text-2xl sm:text-3xl font-bold mb-2 text-white">6 Utilities</div>
               <div className="text-xs text-gray-300 font-light">Tools</div>
             </div>
-            <div className="bg-transparent backdrop-blur-sm p-6 text-center border border-dashed border-white/30 h-full">
-              <div className="text-3xl font-bold mb-2 text-white">Beta</div>
+            <div className="bg-transparent backdrop-blur-sm p-4 sm:p-6 text-center border border-dashed border-white/30 h-full">
+              <div className="text-2xl sm:text-3xl font-bold mb-2 text-white">Beta</div>
               <div className="text-xs text-gray-300 font-light">Status</div>
             </div>
           </motion.div>
