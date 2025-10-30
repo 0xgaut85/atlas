@@ -177,7 +177,7 @@ class PayAIClient {
   async verifyPayment(paymentData: any): Promise<FacilitatorResponse<any>> {
     try {
       // PayAI facilitator expects x402 format with paymentHeader
-      // PaymentPayload structure: { x402Version, scheme, network, payload: { transactionHash, amount, ... } }
+      // PaymentPayload structure: { x402Version, scheme, network, payload: { transactionHash, amount, from, to } }
       const paymentPayload = {
         x402Version: 1,
         scheme: paymentData.network === 'base' ? 'x402+eip712' : 'x402+solana',
@@ -185,14 +185,18 @@ class PayAIClient {
         payload: {
           transactionHash: paymentData.txHash,
           amount: String(paymentData.expectedAmount),
-          // from and to are optional - facilitator will extract from transaction
+          to: paymentData.expectedRecipient?.toLowerCase(),
+          // from is optional - facilitator will extract from transaction
         },
       };
 
       // Encode payment payload as base64 (x402 paymentHeader format)
       const paymentHeader = Buffer.from(JSON.stringify(paymentPayload)).toString('base64');
+      
+      // Log decoded payload for debugging
+      console.log('🔍 Decoded PaymentPayload:', JSON.stringify(paymentPayload, null, 2));
 
-      // Create payment requirements
+      // Create payment requirements - facilitator expects these fields
       const paymentRequirements = {
         scheme: paymentData.network === 'base' ? 'x402+eip712' : 'x402+solana',
         network: paymentData.network,
@@ -212,7 +216,7 @@ class PayAIClient {
         url: `${this.facilitatorUrl}/verify`,
         payload: {
           x402Version: requestPayload.x402Version,
-          paymentHeader: paymentHeader.substring(0, 50) + '...', // Log preview only
+          paymentHeader: paymentHeader.substring(0, 100) + '...', // Log preview only
           paymentRequirements: requestPayload.paymentRequirements,
         },
       });
@@ -240,6 +244,12 @@ class PayAIClient {
           error: data.error || data.message || data.invalidReason || 'Unknown error',
           fullResponse: data,
         });
+        // Log the full request payload for debugging (except sensitive data)
+        console.error('❌ Full request payload sent:', JSON.stringify({
+          x402Version: requestPayload.x402Version,
+          paymentHeaderLength: paymentHeader.length,
+          paymentRequirements: requestPayload.paymentRequirements,
+        }, null, 2));
       }
       
       // Facilitator returns { isValid: true/false, invalidReason: string | null }
