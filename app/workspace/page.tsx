@@ -81,6 +81,30 @@ export default function WorkspacePage() {
       status: 'Live',
       category: 'AI',
       number: '[6]'
+    },
+    {
+      name: 'Payment Tester',
+      description: 'Test and debug x402 payment flows step-by-step. Validate endpoints, check 402 responses, and troubleshoot integration issues.',
+      href: '/workspace/payment-tester',
+      status: 'Live',
+      category: 'Development',
+      number: '[7]'
+    },
+    {
+      name: 'Service Monitor',
+      description: 'Real-time health monitoring for x402 services. Track uptime, response times, and payment success rates across the ecosystem.',
+      href: '/workspace/service-monitor',
+      status: 'Live',
+      category: 'Development',
+      number: '[8]'
+    },
+    {
+      name: 'Code Generator',
+      description: 'Generate ready-to-use x402 server code for Express, FastAPI, Flask, and Next.js. Copy-paste ready templates with customization.',
+      href: '/workspace/code-generator',
+      status: 'Live',
+      category: 'Development',
+      number: '[9]'
     }
   ];
 
@@ -193,7 +217,7 @@ export default function WorkspacePage() {
         </motion.div>
         
         {/* Category-based Layout with Premium Design */}
-        {['Analytics', 'Creation', 'Discovery', 'Integration', 'AI'].map((category, catIndex) => {
+        {['Analytics', 'Creation', 'Discovery', 'Integration', 'AI', 'Development'].map((category, catIndex) => {
           const categoryUtils = utilities.filter(u => u.category === category);
           if (categoryUtils.length === 0) return null;
           
@@ -325,7 +349,7 @@ export default function WorkspacePage() {
           className="mt-24 grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8"
         >
           {[
-            { value: '6', label: 'Utilities' },
+            { value: '9', label: 'Utilities' },
             { value: '2', label: 'Networks' },
             { value: '∞', label: 'Services' },
             { value: '24/7', label: 'Uptime' }

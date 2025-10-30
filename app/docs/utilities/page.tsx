@@ -221,6 +221,109 @@ const utilities = [
     ),
     tag: 'AI',
     href: '/docs/utilities/operator'
+  },
+  {
+    id: 'payment-tester',
+    title: 'Payment Tester',
+    description: 'Test and debug x402 payment flows step-by-step. Validate endpoints, check 402 responses, and troubleshoot integration issues.',
+    content: (
+      <div>
+        <p className="mb-4">Debug x402 integration issues with step-by-step payment flow testing. Perfect for developers integrating x402 into their services.</p>
+        <div className="bg-gray-50 p-4 border-2 border-dashed border-gray-300 mb-4">
+          <div className="text-sm text-gray-700 space-y-2">
+            <div className="flex justify-between">
+              <span>Access Fee:</span>
+              <span className="font-medium text-black">$1.00 USDC</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Session Duration:</span>
+              <span className="font-medium text-black">1 hour</span>
+            </div>
+          </div>
+        </div>
+        <div className="space-y-2 text-sm">
+          <div className="font-medium text-black">Features:</div>
+          <ul className="list-disc list-inside text-gray-600 space-y-1 ml-2">
+            <li>Endpoint URL validation</li>
+            <li>402 response structure checking</li>
+            <li>Payment requirements validation</li>
+            <li>Step-by-step debugging</li>
+            <li>Error identification</li>
+          </ul>
+        </div>
+      </div>
+    ),
+    tag: 'Development',
+    href: '/workspace/payment-tester'
+  },
+  {
+    id: 'service-monitor',
+    title: 'Service Monitor',
+    description: 'Real-time health monitoring for x402 services. Track uptime, response times, and payment success rates.',
+    content: (
+      <div>
+        <p className="mb-4">Monitor the health of x402 services across the ecosystem. See which services are reliable and performing well.</p>
+        <div className="bg-gray-50 p-4 border-2 border-dashed border-gray-300 mb-4">
+          <div className="text-sm text-gray-700 space-y-2">
+            <div className="flex justify-between">
+              <span>Access Fee:</span>
+              <span className="font-medium text-black">$1.00 USDC</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Session Duration:</span>
+              <span className="font-medium text-black">1 hour</span>
+            </div>
+          </div>
+        </div>
+        <div className="space-y-2 text-sm">
+          <div className="font-medium text-black">Features:</div>
+          <ul className="list-disc list-inside text-gray-600 space-y-1 ml-2">
+            <li>Service uptime tracking</li>
+            <li>Response time monitoring</li>
+            <li>Payment success rate</li>
+            <li>Health scores</li>
+            <li>Auto-refresh option</li>
+          </ul>
+        </div>
+      </div>
+    ),
+    tag: 'Development',
+    href: '/workspace/service-monitor'
+  },
+  {
+    id: 'code-generator',
+    title: 'Code Generator',
+    description: 'Generate ready-to-use x402 server code for Express, FastAPI, Flask, and Next.js. FREE utility.',
+    content: (
+      <div>
+        <p className="mb-4">Get started instantly with copy-paste ready code templates. Select your framework and customize your settings.</p>
+        <div className="bg-green-50 p-4 border-2 border-dashed border-green-600 mb-4">
+          <div className="text-sm text-gray-700 space-y-2">
+            <div className="flex justify-between">
+              <span>Access Fee:</span>
+              <span className="font-medium text-green-600">FREE</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Purpose:</span>
+              <span className="font-medium text-black">Drives adoption</span>
+            </div>
+          </div>
+        </div>
+        <div className="space-y-2 text-sm">
+          <div className="font-medium text-black">Features:</div>
+          <ul className="list-disc list-inside text-gray-600 space-y-1 ml-2">
+            <li>Express.js templates</li>
+            <li>FastAPI templates</li>
+            <li>Flask templates</li>
+            <li>Next.js API route templates</li>
+            <li>Customizable settings</li>
+            <li>Copy-paste ready code</li>
+          </ul>
+        </div>
+      </div>
+    ),
+    tag: 'Development',
+    href: '/workspace/code-generator'
   }
 ];
 
@@ -230,8 +333,8 @@ export default function UtilitiesPage() {
       <EditorialHero
         variant="center"
         eyebrow="Platform Utilities"
-        title="Six Integrated Tools"
-        dek="Complete infrastructure for building, managing, and monetizing x402 services. All utilities require $1.00 USDC access fee for one hour."
+        title="Nine Integrated Tools"
+        dek="Complete infrastructure for building, managing, and monetizing x402 services. Most utilities require $1.00 USDC access fee for one hour. Code Generator is FREE."
         className="mb-24"
       />
 
