@@ -48,8 +48,8 @@ export interface FacilitatorResponse<T> {
 }
 
 class PayAIClient {
-  private facilitatorUrl = 'https://facilitator.payai.network';
-  private discoveryUrl = 'https://facilitator.payai.network/discovery/resources';
+  private facilitatorUrl = process.env.NEXT_PUBLIC_X402_FACILITATOR_URL || 'https://facilitator.cdp.coinbase.com'; // Coinbase CDP facilitator (fee-free)
+  private discoveryUrl = 'https://facilitator.payai.network/discovery/resources'; // Keep PayAI for discovery
   private echoMerchantUrl = 'https://x402.payai.network';
 
   /**
@@ -171,9 +171,9 @@ class PayAIClient {
   }
 
   /**
-   * Verify a payment via PayAI facilitator
-   * PayAI facilitator /verify endpoint supports EIP-3009 authorization format
-   * Format: { paymentPayload: { signature, authorization }, paymentRequirements: {...} }
+   * Verify a payment via Coinbase CDP facilitator (or PayAI if configured)
+   * Coinbase CDP facilitator: https://facilitator.cdp.coinbase.com (fee-free Base USDC)
+   * Supports EIP-3009 authorization format: { paymentPayload: { signature, authorization }, paymentRequirements: {...} }
    */
   async verifyPayment(paymentData: any): Promise<FacilitatorResponse<any>> {
     try {
@@ -233,7 +233,7 @@ class PayAIClient {
       };
 
       // CRITICAL DEBUG: Log EVERY detail of what we're sending to facilitator
-      console.log('🔍 PayAI Facilitator Request (FULL DETAILS):', {
+      console.log(`🔍 Facilitator Request (${this.facilitatorUrl.includes('coinbase') ? 'Coinbase CDP' : 'PayAI'}) (FULL DETAILS):`, {
         url: `${this.facilitatorUrl}/verify`,
         format: 'paymentPayload + paymentRequirements (direct JSON)',
         paymentPayload: JSON.parse(JSON.stringify(paymentPayload)), // Deep clone for logging
