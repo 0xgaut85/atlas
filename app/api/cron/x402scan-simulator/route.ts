@@ -194,6 +194,7 @@ export async function GET(request: NextRequest) {
           },
         };
         
+        // Step 3a: Verify with PayAI facilitator
         const facilitatorResponse = await fetch(facilitatorUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -202,12 +203,46 @@ export async function GET(request: NextRequest) {
         
         const facilitatorData = await facilitatorResponse.json();
         
+        console.log('🔍 PayAI Facilitator Verify Response:', {
+          status: facilitatorResponse.status,
+          isValid: facilitatorData.isValid,
+          txHash: facilitatorData.txHash,
+          fullResponse: facilitatorData,
+        });
+        
         if (!facilitatorResponse.ok || !facilitatorData.isValid) {
           return { success: false, error: `Facilitator rejected: ${facilitatorData.invalidReason || 'Unknown'}` };
         }
         
-        // Step 4: Notify our server with facilitator's transaction hash
-        const txHash = facilitatorData.txHash || authorization.nonce;
+        // Step 3b: Settle the payment (execute on-chain)
+        // PayAI facilitator requires /settle to actually execute the transfer
+        const settleUrl = 'https://facilitator.payai.network/settle';
+        const settleRequest = {
+          paymentPayload: facilitatorRequest.paymentPayload,
+          paymentRequirements: facilitatorRequest.paymentRequirements,
+        };
+        
+        const settleResponse = await fetch(settleUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(settleRequest),
+        });
+        
+        const settleData = await settleResponse.json();
+        
+        console.log('🔍 PayAI Facilitator Settle Response:', {
+          status: settleResponse.status,
+          txHash: settleData.txHash,
+          success: settleData.success,
+          fullResponse: settleData,
+        });
+        
+        if (!settleResponse.ok || !settleData.txHash) {
+          return { success: false, error: `Settlement failed: ${settleData.error || 'No transaction hash'}` };
+        }
+        
+        // Step 4: Notify our server with facilitator's actual transaction hash
+        const txHash = settleData.txHash;
         const serverPaymentPayload = {
           x402Version: 1,
           scheme: 'exact',
@@ -225,12 +260,15 @@ export async function GET(request: NextRequest) {
           },
         });
         
-        // Even if server returns error, facilitator already executed - success!
-        if (facilitatorData.isValid) {
-          return { success: true };
+        // If settlement succeeded and we have a txHash, payment is complete!
+        // Transaction will appear on x402scan after indexing (~5-15 minutes)
+        if (settleData.txHash) {
+          console.log(`✅ Payment settled! Transaction hash: ${txHash}`);
+          console.log(`✅ Will appear on x402scan: https://www.x402scan.com/server/f3c66953-18b9-46b9-84af-6f3774730036`);
+          return { success: true, txHash: txHash };
         }
         
-        return { success: false, error: `Server error: ${serverResponse.status}` };
+        return { success: false, error: `Settlement failed: No transaction hash received` };
       } catch (error: any) {
         return { success: false, error: error.message || 'Unknown error' };
       }
