@@ -38,11 +38,13 @@ export async function createEIP3009Authorization(
     // - name: "USD Coin" (verified on Base)
     // - version: "2"
     // - chainId: 8453 for Base
+    // EIP-712 domain separator for USDC transferWithAuthorization
+    // USDC on Base uses these domain values for EIP-3009
     const domain = {
-      name: 'USD Coin', // USDC contract name on Base
+      name: 'USD Coin', // USDC contract name (same across networks)
       version: '2', // USDC contract version
-      chainId: chainId, // 8453 for Base mainnet
-      verifyingContract: usdcContract.toLowerCase(), // Ensure lowercase for consistency
+      chainId: chainId, // 8453 for Base, 1 for Ethereum (as number)
+      verifyingContract: usdcContract.toLowerCase(), // Contract address (lowercase)
     };
 
     const types = {
@@ -66,18 +68,16 @@ export async function createEIP3009Authorization(
     const validAfter = now;
     const validBefore = now + 3600; // 1 hour validity
 
-    // EIP-712 message: uint256 values must be hex strings, properly padded
-    // Convert numbers to hex with proper padding for uint256 (64 hex chars = 32 bytes)
-    const valueHex = '0x' + BigInt(amountMicro).toString(16).padStart(64, '0');
-    const validAfterHex = '0x' + BigInt(validAfter).toString(16).padStart(64, '0');
-    const validBeforeHex = '0x' + BigInt(validBefore).toString(16).padStart(64, '0');
-    
+    // EIP-712 message: uint256 values should be hex strings
+    // Use BigInt to ensure proper conversion, then format as hex
+    // Note: Some wallets expect minimal hex (no excessive padding), others expect padded
+    // Try standard format first (MetaMask typically handles padding automatically)
     const message = {
       from: from.toLowerCase(),
       to: recipient.toLowerCase(),
-      value: valueHex,
-      validAfter: validAfterHex,
-      validBefore: validBeforeHex,
+      value: '0x' + BigInt(amountMicro).toString(16),
+      validAfter: '0x' + BigInt(validAfter).toString(16),
+      validBefore: '0x' + BigInt(validBefore).toString(16),
       nonce: nonceHex,
     };
 
