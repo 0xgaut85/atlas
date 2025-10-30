@@ -103,7 +103,7 @@ export async function GET(request: NextRequest) {
     const endpoint = 'https://api.atlas402.com/api/atlas-index';
     
     // SIMPLE: Call PayAI facilitator directly, then notify our server
-    const makeFacilitatorPayment = async (endpointUrl: string): Promise<{ success: boolean; error?: string }> => {
+    const makeFacilitatorPayment = async (endpointUrl: string): Promise<{ success: boolean; error?: string; txHash?: string }> => {
       try {
         // Step 1: Get payment requirements from our endpoint
         const response = await fetch(endpointUrl, { method: 'GET' });
