@@ -172,43 +172,16 @@ export async function verifyX402Payment(
       }
     }
     
-    // Legacy transactionHash format (fallback for old clients)
+    // Direct on-chain transfer format (main site payments - no facilitator)
     if (payment.transactionHash || payment.payload?.transactionHash) {
-      console.log('✅ Payment received with transaction hash (legacy format)');
+      console.log('✅ Payment received with transaction hash (direct on-chain transfer)');
       const txHash = payment.transactionHash || payment.payload?.transactionHash;
       
-      // Try facilitator verification first (might work if they support it)
-      try {
-        const facilitatorVerification = await payaiClient.verifyPayment({
-          txHash: txHash,
-          network: network,
-          expectedAmount: expectedAmountMicro,
-          expectedRecipient: expectedRecipient,
-          tokenAddress: network === 'base' ? TOKENS.usdcEvm : TOKENS.usdcSol,
-        });
-
-        if (facilitatorVerification.success && facilitatorVerification.data?.valid) {
-          console.log('✅ Payment verified via PayAI facilitator (legacy)');
-          return {
-            valid: true,
-            payment: {
-              transactionHash: txHash,
-              network: network,
-              amount: payment.amount || expectedAmountMicro,
-              from: facilitatorVerification.data?.tx?.from,
-              to: expectedRecipient,
-              verified: true,
-              facilitatorVerified: true,
-            },
-          };
-        }
-      } catch (e) {
-        console.warn('Facilitator verification failed for legacy format, using on-chain fallback');
-      }
-      
-      // Fallback to on-chain verification
+      // For direct on-chain transfers, skip facilitator and verify on-chain directly
+      // This is faster and more reliable for main site payments
+      console.log('🔍 Verifying direct on-chain transfer...');
       return await verifyOnChainFallback(
-        { transactionHash: txHash, network, amount: payment.amount },
+        { transactionHash: txHash, network, amount: payment.amount || expectedAmountMicro },
         network,
         expectedRecipient
       );
@@ -235,76 +208,150 @@ async function verifyOnChainFallback(
   network: string,
   expectedRecipient: string
 ): Promise<PaymentVerification> {
-      if (network === 'base') {
-        try {
-          // Use public Base RPC to verify the transaction
-          const rpcUrl = 'https://mainnet.base.org';
-          const txResponse = await fetch(rpcUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              jsonrpc: '2.0',
-              method: 'eth_getTransactionByHash',
-              params: [payment.transactionHash],
-              id: 1,
-            }),
-          });
+  if (network === 'base') {
+    try {
+      console.log('🔍 Verifying Base transaction on-chain:', payment.transactionHash);
+      
+      // Use public Base RPC to verify the transaction
+      const rpcUrl = 'https://mainnet.base.org';
+      const txResponse = await fetch(rpcUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'eth_getTransactionByHash',
+          params: [payment.transactionHash],
+          id: 1,
+        }),
+      });
 
-          const txData = await txResponse.json();
-          
-          if (txData.result) {
-            const tx = txData.result;
-            const usdcContract = TOKENS.usdcEvm.toLowerCase();
-            
-            if (tx.to && tx.to.toLowerCase() === usdcContract) {
-          // Decode the transfer data to verify recipient
-              if (tx.input && tx.input.startsWith('0xa9059cbb')) {
-                const recipientFromTx = '0x' + tx.input.slice(34, 74);
-                
-                if (recipientFromTx.toLowerCase() === expectedRecipient.toLowerCase()) {
-              console.log('✅ Payment verified via on-chain fallback');
-                  return {
-                    valid: true,
-                    payment: {
-                      transactionHash: payment.transactionHash,
-                      network: payment.network,
-                      amount: payment.amount,
-                      from: tx.from,
-                      to: expectedRecipient,
-                verified: true,
-                fallback: true,
-              },
-            };
-          }
-          }
-        }
-      }
-    } catch (onChainError: any) {
-      console.error('On-chain fallback error:', onChainError);
-        }
-      }
-
-  // For Solana: accept transaction signature if it looks valid
-      if (network === 'solana-mainnet' || network === 'solana-devnet') {
-    if (payment.transactionHash && payment.transactionHash.length > 80) {
-      console.log('✅ Accepting Solana payment (fallback)');
+      const txData = await txResponse.json();
+      
+      if (!txData.result) {
+        console.error('❌ Transaction not found on-chain:', payment.transactionHash);
         return {
-          valid: true,
-          payment: {
-            signature: payment.transactionHash,
-            network: payment.network,
-            amount: payment.amount,
-            verified: true,
-          fallback: true,
-          },
+          valid: false,
+          error: 'Transaction not found on-chain. Please wait a few seconds and try again.',
         };
       }
+      
+      const tx = txData.result;
+      const usdcContract = TOKENS.usdcEvm.toLowerCase();
+      
+      console.log('📋 Transaction details:', {
+        to: tx.to,
+        from: tx.from,
+        toMatchesUSDC: tx.to?.toLowerCase() === usdcContract,
+        hasInput: !!tx.input,
+        inputLength: tx.input?.length,
+      });
+      
+      // Verify transaction is to USDC contract
+      if (tx.to && tx.to.toLowerCase() === usdcContract) {
+        // Decode the transfer data to verify recipient
+        if (tx.input && tx.input.startsWith('0xa9059cbb')) {
+          const recipientFromTx = '0x' + tx.input.slice(34, 74);
+          
+          console.log('📋 Transfer recipient:', {
+            recipientFromTx,
+            expectedRecipient,
+            matches: recipientFromTx.toLowerCase() === expectedRecipient.toLowerCase(),
+          });
+          
+          if (recipientFromTx.toLowerCase() === expectedRecipient.toLowerCase()) {
+            console.log('✅ Payment verified via on-chain verification');
+            
+            // Record payment in database
+            try {
+              const { recordPayment } = await import('@/lib/atlas-tracking');
+              await recordPayment({
+                txHash: payment.transactionHash,
+                userAddress: tx.from,
+                merchantAddress: expectedRecipient,
+                network: network,
+                amountMicro: parseInt(payment.amount || '0'),
+                currency: 'USDC',
+                category: 'access',
+                service: null,
+                metadata: {
+                  verifiedBy: 'on-chain',
+                  directTransfer: true,
+                },
+              });
+              console.log('✅ Payment recorded in database');
+            } catch (dbError: any) {
+              console.error('Failed to record payment in database:', dbError.message);
+            }
+            
+            return {
+              valid: true,
+              payment: {
+                transactionHash: payment.transactionHash,
+                network: network,
+                amount: payment.amount,
+                from: tx.from,
+                to: expectedRecipient,
+                verified: true,
+                verifiedBy: 'on-chain',
+              },
+            };
+          } else {
+            console.error('❌ Recipient mismatch:', {
+              expected: expectedRecipient,
+              actual: recipientFromTx,
+            });
+            return {
+              valid: false,
+              error: `Payment recipient mismatch. Expected ${expectedRecipient}, got ${recipientFromTx}`,
+            };
+          }
+        } else {
+          console.error('❌ Invalid transfer function signature in transaction');
+          return {
+            valid: false,
+            error: 'Invalid transaction format - not a USDC transfer',
+          };
+        }
+      } else {
+        console.error('❌ Transaction not to USDC contract:', {
+          expected: usdcContract,
+          actual: tx.to,
+        });
+        return {
+          valid: false,
+          error: 'Transaction is not a USDC transfer',
+        };
+      }
+    } catch (onChainError: any) {
+      console.error('❌ On-chain verification error:', onChainError);
+      return {
+        valid: false,
+        error: `On-chain verification failed: ${onChainError.message || 'Unknown error'}`,
+      };
     }
+  }
 
-    return {
-      valid: false,
-    error: 'Payment verification failed - unable to verify transaction',
-    };
+  // For Solana: accept transaction signature if it looks valid
+  if (network === 'solana-mainnet' || network === 'solana-devnet') {
+    if (payment.transactionHash && payment.transactionHash.length > 80) {
+      console.log('✅ Accepting Solana payment (direct transfer)');
+      return {
+        valid: true,
+        payment: {
+          signature: payment.transactionHash,
+          network: network,
+          amount: payment.amount,
+          verified: true,
+          verifiedBy: 'solana-signature',
+        },
+      };
+    }
+  }
+
+  return {
+    valid: false,
+    error: 'Payment verification failed - unsupported network or invalid transaction',
+  };
 }
 
 /**
