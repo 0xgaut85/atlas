@@ -172,24 +172,85 @@ class PayAIClient {
 
   /**
    * Verify a payment via PayAI facilitator
-   * NOTE: PayAI facilitator /verify endpoint expects EIP-3009 authorization format
-   * Since we're using regular USDC transfers (not EIP-3009), we can't use facilitator verification
-   * Instead, we'll return false so on-chain verification is used
-   * Transactions will still appear on x402scan through endpoint registration
+   * PayAI facilitator /verify endpoint: { paymentPayload, paymentRequirements }
+   * We'll try using transactionHash instead of EIP-3009 authorization
    */
   async verifyPayment(paymentData: any): Promise<FacilitatorResponse<any>> {
     try {
-      // PayAI facilitator expects EIP-3009 authorization with signature + authorization object
-      // We're using regular transfers with transactionHash, which is incompatible
-      // Return false to use on-chain verification instead
-      // Note: x402scan will still discover transactions from registered endpoints
+      // Try format that PayAI facilitator might accept for transaction hash verification
+      // Structure: { paymentPayload: {...}, paymentRequirements: {...} }
       
-      console.log('⚠️ Skipping PayAI facilitator verification - using regular transfers (not EIP-3009)');
-      console.log('📝 Transaction will be verified on-chain and recorded for x402scan discovery');
+      const paymentPayload = {
+        x402Version: 1,
+        scheme: 'exact',
+        network: paymentData.network,
+        payload: {
+          transactionHash: paymentData.txHash, // Use transactionHash for regular transfers
+          amount: String(paymentData.expectedAmount),
+          to: paymentData.expectedRecipient?.toLowerCase(),
+          from: paymentData.from, // Include if available
+        },
+      };
+
+      const paymentRequirements = {
+        scheme: 'exact',
+        network: paymentData.network,
+        maxAmountRequired: String(paymentData.expectedAmount),
+        payTo: paymentData.expectedRecipient?.toLowerCase(),
+        asset: paymentData.tokenAddress?.toLowerCase(),
+        resource: paymentData.resource || 'https://api.atlas402.com',
+        description: paymentData.description || 'Payment verification',
+        mimeType: 'application/json',
+        maxTimeoutSeconds: 60,
+        extra: paymentData.network === 'base' ? { name: 'USDC', version: '2' } : null,
+      };
+
+      const requestPayload = {
+        paymentPayload: paymentPayload,
+        paymentRequirements: paymentRequirements,
+      };
+
+      console.log('🔍 PayAI Facilitator Request:', {
+        url: `${this.facilitatorUrl}/verify`,
+        payload: requestPayload,
+      });
+
+      const response = await fetch(`${this.facilitatorUrl}/verify`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify(requestPayload),
+      });
+
+      const data = await response.json();
+      
+      console.log('🔍 PayAI Facilitator Response:', {
+        status: response.status,
+        statusText: response.statusText,
+        data: data,
+      });
+      
+      if (!response.ok) {
+        console.error('❌ Facilitator verification failed:', {
+          status: response.status,
+          error: data.error || data.message || data.invalidReason || 'Unknown error',
+          fullResponse: data,
+        });
+        // Log full request for debugging
+        console.error('❌ Full request sent:', JSON.stringify(requestPayload, null, 2));
+      }
+      
+      const isValid = data.isValid === true || data.valid === true;
       
       return {
-        success: false,
-        error: 'Facilitator verification requires EIP-3009 authorization. Using on-chain verification instead.',
+        success: response.ok && isValid,
+        data: response.ok && isValid ? {
+          valid: isValid,
+          ...data,
+        } : undefined,
+        error: response.ok && !isValid ? (data.invalidReason || data.error || 'Verification failed') : (response.ok ? undefined : (data.error || data.message || 'Verification failed')),
       };
     } catch (error) {
       console.error('❌ Facilitator verification error:', error);
