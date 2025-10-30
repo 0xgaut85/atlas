@@ -78,6 +78,8 @@ export async function verifyX402Payment(
       });
       
       // Use PayAI facilitator to verify EIP-3009 authorization
+
+      
       try {
         // Get the resource URL from the request
         const resourceUrl = request.url || 'https://api.atlas402.com';
@@ -341,7 +343,7 @@ export function create402Response(
       asset: TOKENS.usdcEvm,
       extra: {
         scheme: 'x402+eip712', // Keep original scheme in extra for compatibility
-        name: 'USDC',
+        name: 'USD Coin', // CRITICAL: Must match Base USDC contract's domain name (not "USDC")
         version: '2',
       },
     });

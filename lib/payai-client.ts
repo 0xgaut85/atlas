@@ -222,7 +222,7 @@ class PayAIClient {
         description: paymentData.description || 'Payment verification',
         mimeType: 'application/json',
         maxTimeoutSeconds: 60,
-        extra: paymentData.network === 'base' ? { name: 'USDC', version: '2' } : null,
+        extra: paymentData.network === 'base' ? { name: 'USD Coin', version: '2' } : null, // CRITICAL: Must match contract's domain name
       };
 
       // PayAI facilitator expects direct JSON objects (NOT base64-encoded)

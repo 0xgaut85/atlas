@@ -70,14 +70,13 @@ export async function createEIP3009Authorization(
     const chainId = network === 'base' ? 8453 : 1; // Base = 8453, Ethereum = 1
     
     // EIP-3009 TransferWithAuthorization domain separator and types
-    // CRITICAL: Base USDC contract (0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913) uses:
-    //   name: "USD Coin" (NOT "USDC")
-    //   version: "2"
-    // PayAI facilitator validates signatures against the CONTRACT'S actual domain separator,
-    // NOT against extra.name from paymentRequirements!
-    // Therefore, we MUST use "USD Coin" to match the contract's DOMAIN_SEPARATOR()
-    const domainName = 'USD Coin'; // CRITICAL: Must match Base USDC contract's domain name
-    const domainVersion = '2'; // Base USDC contract uses version "2"
+    // CRITICAL: Per PayAI docs, facilitator uses extra.name and extra.version from paymentRequirements
+    // to construct the EIP-712 domain for signature validation.
+    // Our create402Response sends: extra: { name: 'USDC', version: '2' }
+    // Therefore, we MUST use extra.name='USDC' when signing to match facilitator's validation domain.
+    // PayAI facilitator constructs the domain as: { name: extra.name, version: extra.version, ... }
+    const domainName = extra?.name || 'USDC'; // Use extra.name from paymentRequirements (PayAI facilitator uses this!)
+    const domainVersion = extra?.version || '2'; // Use extra.version from paymentRequirements (PayAI facilitator uses this!)
     
     // Use viem's getAddress() to checksum addresses (exactly like PayAI's library)
     // This ensures addresses match PayAI's format for EIP-712 signature validation
