@@ -2,26 +2,50 @@
 
 import { useState, useEffect } from 'react';
 import { useAppKitAccount } from '@reown/appkit/react';
-import { createX402Client } from '@/lib/x402-client';
+import { useAppKitProvider } from '@reown/appkit/react';
+import type { Provider } from '@reown/appkit-adapter-wagmi';
+import { makeX402Request } from '@/lib/x402-client';
 import { PaymentGateModal } from '@/app/components/x402/PaymentGateModal';
+import { hasValidSession } from '@/lib/x402-session';
 
 export default function ServiceMonitorPage() {
   const { address, isConnected } = useAppKitAccount();
+  const { walletProvider } = useAppKitProvider<Provider>('eip155');
   const [loading, setLoading] = useState(false);
   const [monitorData, setMonitorData] = useState<any>(null);
   const [hasAccess, setHasAccess] = useState(false);
   const [autoRefresh, setAutoRefresh] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+
+  useEffect(() => {
+    const sessionValid = hasValidSession('service-monitor');
+    setHasAccess(sessionValid);
+    if (!sessionValid && isConnected) {
+      setShowPaymentModal(true);
+    } else if (sessionValid) {
+      fetchMonitorData();
+    }
+  }, [isConnected]);
+
+  const handlePaymentSuccess = () => {
+    setHasAccess(true);
+    setShowPaymentModal(false);
+    fetchMonitorData();
+  };
 
   const fetchMonitorData = async () => {
+    if (!walletProvider) return;
+    
     setLoading(true);
     try {
-      const x402Fetch = createX402Client((window as any).ethereum);
-      const response = await x402Fetch('/api/x402/service-monitor');
+      // Use makeX402Request which handles on-chain transfers (not PayAI facilitator)
+      const response = await makeX402Request(
+        walletProvider,
+        '/api/x402/service-monitor',
+        { method: 'GET' }
+      );
       const data = await response.json();
       setMonitorData(data);
-      if (data.success) {
-        setHasAccess(true);
-      }
     } catch (error: any) {
       console.error('Monitor error:', error);
     } finally {
@@ -75,19 +99,14 @@ export default function ServiceMonitorPage() {
           )}
         </div>
 
-        {!hasAccess && (
-          <PaymentGateModal
-            pageName="Service Monitor"
-            pageId="service-monitor"
-            isOpen={!hasAccess}
-            onSuccess={() => {
-              setHasAccess(true);
-              fetchMonitorData();
-            }}
-            onClose={() => {}}
-            userAddress={address || ''}
-          />
-        )}
+        <PaymentGateModal
+          pageName="Service Monitor"
+          pageId="service-monitor"
+          isOpen={showPaymentModal && isConnected}
+          onSuccess={handlePaymentSuccess}
+          onClose={() => setShowPaymentModal(false)}
+          userAddress={address}
+        />
 
         {hasAccess && monitorData && (
           <div className="space-y-6">

@@ -1,42 +1,61 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAppKitAccount } from '@reown/appkit/react';
-import { createX402Client } from '@/lib/x402-client';
+import { useAppKitProvider } from '@reown/appkit/react';
+import type { Provider } from '@reown/appkit-adapter-wagmi';
+import { makeX402Request } from '@/lib/x402-client';
 import { PaymentGateModal } from '@/app/components/x402/PaymentGateModal';
+import { hasValidSession } from '@/lib/x402-session';
 
 export default function PaymentTesterPage() {
   const { address, isConnected } = useAppKitAccount();
+  const { walletProvider } = useAppKitProvider<Provider>('eip155');
   const [endpointUrl, setEndpointUrl] = useState('');
   const [testMode, setTestMode] = useState<'full' | 'validate-only'>('full');
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<any>(null);
   const [hasAccess, setHasAccess] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+
+  useEffect(() => {
+    const sessionValid = hasValidSession('payment-tester');
+    setHasAccess(sessionValid);
+    if (!sessionValid && isConnected) {
+      setShowPaymentModal(true);
+    }
+  }, [isConnected]);
+
+  const handlePaymentSuccess = () => {
+    setHasAccess(true);
+    setShowPaymentModal(false);
+  };
 
   const handleTest = async () => {
-    if (!endpointUrl) return;
+    if (!endpointUrl || !walletProvider) return;
 
     setLoading(true);
     setResults(null);
 
     try {
-      const x402Fetch = createX402Client((window as any).ethereum);
-      const response = await x402Fetch('/api/x402/payment-tester', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          endpointUrl,
-          testMode: testMode === 'validate-only' ? 'validate-only' : undefined,
-        }),
-      });
+      // Use makeX402Request which handles on-chain transfers (not PayAI facilitator)
+      const response = await makeX402Request(
+        walletProvider,
+        '/api/x402/payment-tester',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            endpointUrl,
+            testMode: testMode === 'validate-only' ? 'validate-only' : undefined,
+          }),
+        }
+      );
 
       const data = await response.json();
       setResults(data);
-      if (data.success) {
-        setHasAccess(true);
-      }
     } catch (error: any) {
       setResults({
         success: false,
@@ -53,16 +72,14 @@ export default function PaymentTesterPage() {
         <h1 className="text-4xl font-bold text-black mb-2">x402 Payment Tester</h1>
         <p className="text-gray-600 mb-8">Test and debug x402 payment flows step-by-step</p>
 
-        {!hasAccess && (
-          <PaymentGateModal
-            pageName="Payment Tester"
-            pageId="payment-tester"
-            isOpen={!hasAccess}
-            onSuccess={() => setHasAccess(true)}
-            onClose={() => {}}
-            userAddress={address || ''}
-          />
-        )}
+        <PaymentGateModal
+          pageName="Payment Tester"
+          pageId="payment-tester"
+          isOpen={showPaymentModal && isConnected}
+          onSuccess={handlePaymentSuccess}
+          onClose={() => setShowPaymentModal(false)}
+          userAddress={address}
+        />
 
         {hasAccess && (
           <div className="space-y-6">
