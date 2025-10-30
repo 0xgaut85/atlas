@@ -272,11 +272,19 @@ export async function GET(request: NextRequest) {
           },
         });
         
+        // Check if server accepted the payment
+        if (!serverResponse.ok) {
+          const errorText = await serverResponse.text().catch(() => 'Unknown error');
+          console.error(`❌ Server rejected payment: ${serverResponse.status}`, errorText);
+          return { success: false, error: `Server rejected payment: ${serverResponse.status} - ${errorText.substring(0, 200)}` };
+        }
+        
         // If settlement succeeded and we have a txHash, payment is complete!
         // Transaction will appear on x402scan after indexing (~5-15 minutes)
         // With validAfter set to 1h ago, transactions will show as "1h ago" on server
         if (txHash) {
           console.log(`✅ Payment settled via PayAI facilitator! Transaction hash: ${txHash}`);
+          console.log(`✅ Server accepted payment: ${serverResponse.status}`);
           console.log(`✅ Will appear on x402scan: https://www.x402scan.com/server/f3c66953-18b9-46b9-84af-6f3774730036`);
           return { success: true, txHash: txHash };
         }

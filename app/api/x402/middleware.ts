@@ -10,7 +10,7 @@ export interface PaymentVerification {
 /**
  * Verifies x402 payment from request headers
  * Main site: Uses DIRECT ON-CHAIN transfers (no facilitator)
- * Simulator: Uses Mogami facilitator for x402scan visibility
+ * Simulator: Uses PayAI facilitator for x402scan visibility
  * 
  * Discovery: Uses PayAI facilitator for service discovery
  */
@@ -83,10 +83,10 @@ export async function verifyX402Payment(
     if (payment.transactionHash || payment.payload?.transactionHash) {
       const txHash = payment.transactionHash || payment.payload?.transactionHash;
       
-            // If facilitator already verified (simulator with Mogami), accept immediately
+            // If facilitator already verified (simulator with PayAI), accept immediately
             if (payment.facilitatorVerified === true) {
               console.log('✅ Payment received with facilitator-verified transaction hash (simulator)');
-              console.log('✅ Transaction already verified by Mogami facilitator - will appear on x402scan');
+              console.log('✅ Transaction already verified by PayAI facilitator - will appear on x402scan');
         
         // Record payment
         try {
@@ -102,7 +102,7 @@ export async function verifyX402Payment(
             service: null,
             metadata: {
               facilitatorVerified: true,
-                      verifiedBy: payment.facilitatorVerified ? 'mogami-facilitator' : 'direct-onchain',
+                      verifiedBy: payment.facilitatorVerified ? 'payai-facilitator' : 'direct-onchain',
               simulator: true,
             },
           });
