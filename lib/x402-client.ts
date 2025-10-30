@@ -174,16 +174,17 @@ export async function createEIP3009Authorization(
     console.log('✅ EIP-3009 authorization signature created');
 
     // Authorization object for PayAI facilitator
-    // Note: Some facilitators expect hex values, but PayAI expects decimal strings
+    // CRITICAL: Addresses MUST be checksummed (same as what we signed in the message)
+    // PayAI facilitator validates the signature against these exact values
     return {
       signature,
       authorization: {
-        from: from.toLowerCase(),
-        to: recipient.toLowerCase(),
-        value: amountMicro.toString(), // Decimal string for PayAI facilitator
-        validAfter: validAfter.toString(), // Decimal string
-        validBefore: validBefore.toString(), // Decimal string
-        nonce: nonceHex, // Keep as hex string (0x...)
+        from: getAddress(from), // MUST be checksummed (matches what we signed)
+        to: getAddress(recipient), // MUST be checksummed (matches what we signed)
+        value: amountMicro.toString(), // Decimal string (like "1000000")
+        validAfter: validAfter.toString(), // Decimal string (like "1761805100")
+        validBefore: validBefore.toString(), // Decimal string (like "1761808700")
+        nonce: nonceHex, // Hex string (0x...)
       },
     };
   } catch (error: any) {
