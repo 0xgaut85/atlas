@@ -248,23 +248,43 @@ export function createX402Client(walletProvider: any) {
           }
 
           // Retry with payment header containing EIP-3009 authorization
+          // IMPORTANT: Preserve original body for POST requests
           console.log('🔄 Retrying request with EIP-3009 authorization...');
-          const paidResponse = await fetch(url, {
-            ...fetchOptions,
+          const retryOptions: RequestInit = {
+            method: fetchOptions.method || 'GET',
             headers: {
               ...fetchOptions.headers,
               'x-payment': paymentHeaderB64, // Base64 encoded as per x402 standard
             },
-          });
+          };
+          
+          // Preserve body for POST/PUT/PATCH requests
+          if (fetchOptions.body) {
+            retryOptions.body = fetchOptions.body;
+            console.log('📤 Preserving request body for retry');
+          }
+          
+          const paidResponse = await fetch(url, retryOptions);
 
           console.log('📨 Retry response status:', paidResponse.status);
 
-          // If still 402, log detailed error
+          // If still 402, log detailed error and throw helpful message
           if (paidResponse.status === 402) {
-            const errorInfo = await paidResponse.json().catch(() => ({}));
-            console.error('❌ Server still returned 402 after sending authorization:', errorInfo);
-            console.error('📤 Payment header sent (first 100 chars):', paymentHeaderB64.substring(0, 100));
-            console.error('📦 Full payment payload:', JSON.stringify(paymentPayload, null, 2));
+            let errorInfo: any = {};
+            try {
+              const errorText = await paidResponse.text();
+              errorInfo = errorText ? JSON.parse(errorText) : {};
+              console.error('❌ Server still returned 402 after sending authorization:', errorInfo);
+              console.error('📤 Payment header sent (first 100 chars):', paymentHeaderB64.substring(0, 100));
+              console.error('📦 Full payment payload:', JSON.stringify(paymentPayload, null, 2));
+              
+              // Extract error message from response
+              const errorMsg = errorInfo.error || errorInfo.message || 'Payment verification failed';
+              throw new Error(`Payment failed: ${errorMsg}. Check server logs for details.`);
+            } catch (parseError) {
+              console.error('❌ Failed to parse error response:', parseError);
+              throw new Error('Payment verification failed. Server returned 402. Check server logs.');
+            }
           }
 
           return paidResponse;

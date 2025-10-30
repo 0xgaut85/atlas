@@ -130,20 +130,31 @@ export async function verifyX402Payment(
             },
           };
         } else {
-          console.warn('⚠️ Facilitator verification failed:', facilitatorVerification.error);
+          const errorDetails = facilitatorVerification.error || 'Unknown error';
+          const responseData = facilitatorVerification.data;
+          console.warn('⚠️ Facilitator verification failed:', {
+            error: errorDetails,
+            responseData: responseData,
+            authorizationSent: {
+              from: payment.payload.authorization.from,
+              to: payment.payload.authorization.to,
+              value: payment.payload.authorization.value,
+            },
+          });
           // For EIP-3009, facilitator failure means we can't verify - return error
           // (USDC hasn't been transferred yet, authorization is just signed)
           return {
             valid: false,
-            error: `Facilitator verification failed: ${facilitatorVerification.error}`,
+            error: `Facilitator verification failed: ${errorDetails}. Check facilitator logs.`,
           };
         }
       } catch (facilitatorError: any) {
-        console.error('Facilitator verification error:', facilitatorError);
+        console.error('❌ Facilitator verification error:', facilitatorError);
+        console.error('❌ Error stack:', facilitatorError.stack);
         // For EIP-3009, if facilitator fails, payment wasn't executed
         return {
           valid: false,
-          error: `Facilitator error: ${facilitatorError.message}`,
+          error: `Facilitator error: ${facilitatorError.message || 'Unknown error'}`,
         };
       }
     }
