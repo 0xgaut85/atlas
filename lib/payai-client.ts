@@ -48,7 +48,7 @@ export interface FacilitatorResponse<T> {
 }
 
 class PayAIClient {
-  private facilitatorUrl = process.env.NEXT_PUBLIC_X402_FACILITATOR_URL || 'https://facilitator.cdp.coinbase.com'; // Coinbase CDP facilitator (fee-free)
+  private facilitatorUrl = process.env.NEXT_PUBLIC_X402_FACILITATOR_URL || 'https://facilitator.payai.network'; // PayAI facilitator (works, Coinbase doesn't have public facilitator URL)
   private discoveryUrl = 'https://facilitator.payai.network/discovery/resources'; // Keep PayAI for discovery
   private echoMerchantUrl = 'https://x402.payai.network';
 
