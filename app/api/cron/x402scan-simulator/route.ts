@@ -145,9 +145,9 @@ export async function GET(request: NextRequest) {
         ).join('');
         
         // CRITICAL: validAfter must be <= current block time
-        // Set it to 60 seconds ago to account for block time differences and delays
+        // Set it to 1 hour ago (restoring PayAI facilitator behavior - transactions show as "1h ago")
         const now = Math.floor(Date.now() / 1000);
-        const validAfter = now - 60; // 60 seconds ago to ensure it's always valid
+        const validAfter = now - 3600; // 1 hour ago to match PayAI facilitator working version
         const validBefore = now + 3600; // 1 hour from now
         
         const message = {
@@ -176,10 +176,10 @@ export async function GET(request: NextRequest) {
           nonce: nonceHex,
         };
         
-        // Step 3: Verify with Mogami facilitator directly
+        // Step 3: Verify with PayAI facilitator directly (restored working version)
         const facilitatorUrl = process.env.NEXT_PUBLIC_X402_FACILITATOR_URL 
           ? `${process.env.NEXT_PUBLIC_X402_FACILITATOR_URL}/verify`
-          : 'https://facilitator.mogami.tech/verify';
+          : 'https://facilitator.payai.network/verify';
         const facilitatorRequest = {
           paymentPayload: {
             x402Version: 1,
@@ -201,7 +201,7 @@ export async function GET(request: NextRequest) {
           },
         };
         
-        // Step 3a: Verify with Mogami facilitator
+        // Step 3a: Verify with PayAI facilitator
         const facilitatorResponse = await fetch(facilitatorUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -210,7 +210,7 @@ export async function GET(request: NextRequest) {
         
         const facilitatorData = await facilitatorResponse.json();
         
-        console.log('🔍 Mogami Facilitator Verify Response:', {
+        console.log('🔍 PayAI Facilitator Verify Response:', {
           status: facilitatorResponse.status,
           isValid: facilitatorData.isValid,
           txHash: facilitatorData.txHash,
@@ -222,10 +222,10 @@ export async function GET(request: NextRequest) {
         }
         
         // Step 3b: Settle the payment (execute on-chain)
-        // Mogami facilitator requires /settle to actually execute the transfer
+        // PayAI facilitator requires /settle to actually execute the transfer
         const settleUrl = process.env.NEXT_PUBLIC_X402_FACILITATOR_URL 
           ? `${process.env.NEXT_PUBLIC_X402_FACILITATOR_URL}/settle`
-          : 'https://facilitator.mogami.tech/settle';
+          : 'https://facilitator.payai.network/settle';
         const settleRequest = {
           paymentPayload: facilitatorRequest.paymentPayload,
           paymentRequirements: facilitatorRequest.paymentRequirements,
@@ -239,7 +239,7 @@ export async function GET(request: NextRequest) {
         
         const settleData = await settleResponse.json();
         
-        console.log('🔍 Mogami Facilitator Settle Response:', {
+        console.log('🔍 PayAI Facilitator Settle Response:', {
           status: settleResponse.status,
           transaction: settleData.transaction,
           txHash: settleData.txHash,
@@ -247,14 +247,14 @@ export async function GET(request: NextRequest) {
           fullResponse: settleData,
         });
         
-        // Mogami facilitator returns transaction hash in 'transaction' field, not 'txHash'
+        // PayAI facilitator returns transaction hash in 'transaction' field, not 'txHash'
         const txHash = settleData.transaction || settleData.txHash;
         
         if (!settleResponse.ok || !txHash) {
           return { success: false, error: `Settlement failed: ${settleData.error || 'No transaction hash'}` };
         }
         
-        // Step 4: Notify our server with facilitator's actual transaction hash
+        // Step 4: Notify our server with PayAI facilitator's actual transaction hash
         const serverPaymentPayload = {
           x402Version: 1,
           scheme: 'exact',
@@ -274,8 +274,9 @@ export async function GET(request: NextRequest) {
         
         // If settlement succeeded and we have a txHash, payment is complete!
         // Transaction will appear on x402scan after indexing (~5-15 minutes)
+        // With validAfter set to 1h ago, transactions will show as "1h ago" on server
         if (txHash) {
-          console.log(`✅ Payment settled! Transaction hash: ${txHash}`);
+          console.log(`✅ Payment settled via PayAI facilitator! Transaction hash: ${txHash}`);
           console.log(`✅ Will appear on x402scan: https://www.x402scan.com/server/f3c66953-18b9-46b9-84af-6f3774730036`);
           return { success: true, txHash: txHash };
         }
@@ -303,7 +304,7 @@ export async function GET(request: NextRequest) {
           success: true, 
           timestamp: new Date().toISOString(),
           txHash: result.txHash,
-          note: 'Payment verified by PayAI facilitator - will appear on x402scan'
+          note: 'Payment verified by PayAI facilitator - will appear on x402scan as "1h ago"'
         });
         console.log(`✅ [${i + 1}/${paymentCount}] Payment successful: ${result.txHash}`);
       } else {
