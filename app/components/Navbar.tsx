@@ -137,6 +137,15 @@ export default function Navbar() {
                   >
                     $ATLAS Mint
                   </Link>
+                  <a
+                    href="https://dexscreener.com/solana/4k1jvo15jmopit7tgakuzyny5mpyfykmvnkq5uyscqkt"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block px-4 py-3 text-sm font-light text-gray-700 hover:bg-gray-50 hover:text-black transition-colors border-b border-black/10"
+                    onClick={() => setNovaDropdownOpen(false)}
+                  >
+                    Dexscreener
+                  </a>
                   <div className="px-4 py-3 text-xs">
                     <div className="text-gray-500 mb-1">Contract Address</div>
                     <div className="font-mono text-gray-300 break-all">

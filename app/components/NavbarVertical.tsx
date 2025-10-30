@@ -25,6 +25,7 @@ const items: NavItem[] = [
   { label: 'Atlas Operator', href: '/workspace/atlas-operator', type: 'access' },
   { label: 'Atlas Explorer', href: '#', type: 'access', disabled: true },
   { label: 'Docs', href: '/docs', type: 'learn' },
+  { label: 'Dexscreener', href: 'https://dexscreener.com/solana/4k1jvo15jmopit7tgakuzyny5mpyfykmvnkq5uyscqkt', type: 'visit', external: true },
   { label: 'CoinGecko', href: '#', type: 'visit', disabled: true },
   { label: 'CoinMarketCap', href: '#', type: 'visit', disabled: true },
   { label: 'Roadmap', href: '/roadmap', type: 'learn' },
