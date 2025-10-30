@@ -270,7 +270,7 @@ export async function GET(request: NextRequest) {
         
         // If settlement succeeded and we have a txHash, payment is complete!
         // Transaction will appear on x402scan after indexing (~5-15 minutes)
-        if (settleData.txHash) {
+        if (txHash) {
           console.log(`✅ Payment settled! Transaction hash: ${txHash}`);
           console.log(`✅ Will appear on x402scan: https://www.x402scan.com/server/f3c66953-18b9-46b9-84af-6f3774730036`);
           return { success: true, txHash: txHash };
@@ -282,11 +282,12 @@ export async function GET(request: NextRequest) {
       }
     };
     
-    // Make multiple payments with random delays (1-5 seconds between each)
+    // Make multiple payments with random delays (3-8 seconds between each)
+    // Increased delay to avoid PayAI facilitator nonce conflicts
     const paymentCount = 10;
     const results = [];
     
-    console.log(`🚀 Starting PayAI facilitator spam: ${paymentCount} payments with 1-5s delays...`);
+    console.log(`🚀 Starting PayAI facilitator spam: ${paymentCount} payments with 3-8s delays...`);
     
     for (let i = 0; i < paymentCount; i++) {
       console.log(`🔄 [${i + 1}/${paymentCount}] Making payment...`);
@@ -297,9 +298,10 @@ export async function GET(request: NextRequest) {
           paymentNumber: i + 1,
           success: true, 
           timestamp: new Date().toISOString(),
+          txHash: result.txHash,
           note: 'Payment verified by PayAI facilitator - will appear on x402scan'
         });
-        console.log(`✅ [${i + 1}/${paymentCount}] Payment successful`);
+        console.log(`✅ [${i + 1}/${paymentCount}] Payment successful: ${result.txHash}`);
       } else {
         results.push({ 
           paymentNumber: i + 1,
@@ -309,9 +311,10 @@ export async function GET(request: NextRequest) {
         console.error(`❌ [${i + 1}/${paymentCount}] Payment failed: ${result.error}`);
       }
       
-      // Random delay between 1-5 seconds (except for last payment)
+      // Random delay between 3-8 seconds (except for last payment)
+      // Increased delay to reduce PayAI facilitator nonce conflicts
       if (i < paymentCount - 1) {
-        const delay = Math.floor(Math.random() * 4000) + 1000;
+        const delay = Math.floor(Math.random() * 5000) + 3000; // 3-8 seconds
         await new Promise(resolve => setTimeout(resolve, delay));
       }
     }
