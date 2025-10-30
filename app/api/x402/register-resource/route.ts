@@ -17,12 +17,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'resource URL is required' }, { status: 400 });
     }
 
-    // PayAI facilitator discovery endpoint
-    const facilitatorUrl = X402_CONFIG.facilitatorUrl || 'https://facilitator.payai.network';
+    // Mogami facilitator discovery endpoint
+    const facilitatorUrl = X402_CONFIG.facilitatorUrl || 'https://facilitator.mogami.io';
     const discoveryUrl = `${facilitatorUrl}/discovery/resources`;
 
-    // Register resource with PayAI facilitator
-    // PayAI facilitator should automatically track resources when they receive payments
+    // Register resource with Mogami facilitator
+    // Mogami facilitator should automatically track resources when they receive payments
     // But we can also explicitly register for discovery
     const registrationPayload = {
       resource: resource,
@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
       const data = await response.json();
 
       if (response.ok) {
-        console.log('✅ Resource registered with PayAI facilitator:', resource);
+        console.log('✅ Resource registered with Mogami facilitator:', resource);
         return NextResponse.json({
           success: true,
           message: 'Resource registered for x402scan discovery',
@@ -57,12 +57,12 @@ export async function POST(req: NextRequest) {
         });
       } else {
         console.warn('⚠️ Facilitator registration may not be supported, but payments will still register automatically');
-        // Still return success - PayAI facilitator registers resources automatically on first payment
+        // Still return success - Mogami facilitator registers resources automatically on first payment
         return NextResponse.json({
           success: true,
           message: 'Resource will be auto-registered on first payment',
           resource: resource,
-          note: 'PayAI facilitator automatically registers resources when payments are verified',
+          note: 'Mogami facilitator automatically registers resources when payments are verified',
         });
       }
     } catch (error: any) {
@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
         success: true,
         message: 'Resource will be auto-registered on first payment',
         resource: resource,
-        note: 'PayAI facilitator automatically registers resources when payments are verified',
+        note: 'Mogami facilitator automatically registers resources when payments are verified',
       });
     }
   } catch (error: any) {

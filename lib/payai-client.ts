@@ -48,9 +48,11 @@ export interface FacilitatorResponse<T> {
 }
 
 class PayAIClient {
-  private facilitatorUrl = process.env.NEXT_PUBLIC_X402_FACILITATOR_URL || 'https://facilitator.payai.network'; // PayAI facilitator (works, Coinbase doesn't have public facilitator URL)
-  private discoveryUrl = 'https://facilitator.payai.network/discovery/resources'; // Keep PayAI for discovery
-  private echoMerchantUrl = 'https://x402.payai.network';
+  private facilitatorUrl = process.env.NEXT_PUBLIC_X402_FACILITATOR_URL || 'https://facilitator.mogami.io'; // Mogami facilitator - better x402scan integration
+  private discoveryUrl = process.env.NEXT_PUBLIC_X402_FACILITATOR_URL 
+    ? `${process.env.NEXT_PUBLIC_X402_FACILITATOR_URL}/discovery/resources`
+    : 'https://facilitator.mogami.io/discovery/resources'; // Mogami discovery endpoint
+  private echoMerchantUrl = 'https://x402.payai.network'; // Keep PayAI echo merchant for testing
 
   /**
    * Discover available x402 services via PayAI facilitator
@@ -59,7 +61,7 @@ class PayAIClient {
    */
   async discoverServices(): Promise<FacilitatorResponse<X402Service[]>> {
     try {
-      console.log('🔍 Querying PayAI discovery endpoint for ALL x402 services...');
+      console.log('🔍 Querying Mogami facilitator discovery endpoint for ALL x402 services...');
       console.log(`📡 Endpoint: ${this.discoveryUrl}`);
       
       const response = await fetch(this.discoveryUrl, {
@@ -75,7 +77,7 @@ class PayAIClient {
       }
 
       const data = await response.json();
-      console.log('✅ PayAI Discovery response received');
+      console.log('✅ Mogami Facilitator Discovery response received');
       console.log('📊 Response structure:', {
         hasItems: !!data.items,
         itemsCount: data.items?.length || 0,
@@ -193,7 +195,7 @@ class PayAIClient {
             authorization: paymentData.authorization,
           },
         };
-        console.log('✅ Using EIP-3009 authorization format for PayAI facilitator');
+        console.log('✅ Using EIP-3009 authorization format for Mogami facilitator');
       } else if (paymentData.txHash) {
         // Legacy transactionHash format (fallback - won't work with facilitator)
         paymentPayload = {

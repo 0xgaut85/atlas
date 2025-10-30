@@ -8,7 +8,7 @@ export interface PaymentVerification {
 }
 
 /**
- * Verifies x402 payment from request headers using PayAI facilitator
+ * Verifies x402 payment from request headers using Mogami facilitator
  * This follows the x402 standard by using the facilitator for verification
  * which also auto-registers the merchant for discovery on x402scan.com
  * CRITICAL: Payments MUST be verified by facilitator to appear on x402scan
@@ -69,7 +69,7 @@ export async function verifyX402Payment(
     const priceNumber = Number(price.replace(/[^0-9.]/g, '')) || 1;
     const expectedAmountMicro = Math.round(priceNumber * 1_000_000).toString();
 
-      // Check if we have EIP-3009 authorization (PayAI facilitator format)
+      // Check if we have EIP-3009 authorization (Mogami facilitator format)
     if (payment.payload?.signature && payment.payload?.authorization) {
       console.log('✅ Payment received with EIP-3009 authorization');
       console.log('Authorization details:', {
@@ -78,7 +78,7 @@ export async function verifyX402Payment(
         value: payment.payload.authorization.value,
       });
       
-      // Use PayAI facilitator to verify EIP-3009 authorization
+      // Use Mogami facilitator to verify EIP-3009 authorization
       // CRITICAL: Must succeed for transactions to appear on x402scan
 
       
@@ -98,7 +98,7 @@ export async function verifyX402Payment(
         });
 
         if (facilitatorVerification.success && facilitatorVerification.data?.valid) {
-          console.log('✅ Payment verified via PayAI facilitator');
+          console.log('✅ Payment verified via Mogami facilitator');
           console.log('✅ Transaction will appear on x402scan after sync (~5-15 minutes)');
           
           // Record payment in database for analytics
@@ -115,7 +115,7 @@ export async function verifyX402Payment(
               service: null,
               metadata: {
                 facilitatorVerified: true,
-                verifiedBy: 'payai-facilitator',
+                      verifiedBy: 'mogami-facilitator',
               },
             });
             console.log('✅ Payment recorded in database');
@@ -151,24 +151,24 @@ export async function verifyX402Payment(
             },
           });
           
-          // PayAI facilitator verification failed - payment cannot be verified
-          // Transactions must be verified by facilitator to appear on x402scan
-          console.error('❌ PayAI facilitator verification failed - payment rejected');
-          console.error('❌ Transactions must be verified by facilitator to appear on x402scan');
-          return {
-            valid: false,
-            error: `Facilitator verification failed: ${errorDetails}. Payment must be verified by PayAI facilitator to appear on x402scan.`,
-          };
-        }
-      } catch (facilitatorError: any) {
-        console.error('❌ PayAI facilitator verification error:', facilitatorError);
-        console.error('❌ Error stack:', facilitatorError.stack);
-        // For EIP-3009, payment MUST be verified by facilitator to appear on x402scan
-        // If facilitator fails, payment cannot be accepted
-        return {
-          valid: false,
-          error: `PayAI facilitator error: ${facilitatorError.message || 'Unknown error'}. Payment must be verified by facilitator to appear on x402scan.`,
-        };
+                // Mogami facilitator verification failed - payment cannot be verified
+                // Transactions must be verified by facilitator to appear on x402scan
+                console.error('❌ Mogami facilitator verification failed - payment rejected');
+                console.error('❌ Transactions must be verified by facilitator to appear on x402scan');
+                return {
+                  valid: false,
+                  error: `Facilitator verification failed: ${errorDetails}. Payment must be verified by Mogami facilitator to appear on x402scan.`,
+                };
+              }
+            } catch (facilitatorError: any) {
+              console.error('❌ Mogami facilitator verification error:', facilitatorError);
+              console.error('❌ Error stack:', facilitatorError.stack);
+              // For EIP-3009, payment MUST be verified by facilitator to appear on x402scan
+              // If facilitator fails, payment cannot be accepted
+              return {
+                valid: false,
+                error: `Mogami facilitator error: ${facilitatorError.message || 'Unknown error'}. Payment must be verified by facilitator to appear on x402scan.`,
+              };
       }
     }
     
@@ -177,10 +177,10 @@ export async function verifyX402Payment(
     if (payment.transactionHash || payment.payload?.transactionHash) {
       const txHash = payment.transactionHash || payment.payload?.transactionHash;
       
-      // If facilitator already verified (simulator), accept immediately
-      if (payment.facilitatorVerified === true) {
-        console.log('✅ Payment received with facilitator-verified transaction hash (simulator)');
-        console.log('✅ Transaction already verified by PayAI facilitator - will appear on x402scan');
+            // If facilitator already verified (simulator), accept immediately
+            if (payment.facilitatorVerified === true) {
+              console.log('✅ Payment received with facilitator-verified transaction hash (simulator)');
+              console.log('✅ Transaction already verified by Mogami facilitator - will appear on x402scan');
         
         // Record payment
         try {
@@ -196,7 +196,7 @@ export async function verifyX402Payment(
             service: null,
             metadata: {
               facilitatorVerified: true,
-              verifiedBy: 'payai-facilitator',
+                      verifiedBy: 'mogami-facilitator',
               simulator: true,
             },
           });

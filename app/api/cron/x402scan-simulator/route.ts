@@ -176,8 +176,10 @@ export async function GET(request: NextRequest) {
           nonce: nonceHex,
         };
         
-        // Step 3: Verify with PayAI facilitator directly
-        const facilitatorUrl = 'https://facilitator.payai.network/verify';
+        // Step 3: Verify with Mogami facilitator directly
+        const facilitatorUrl = process.env.NEXT_PUBLIC_X402_FACILITATOR_URL 
+          ? `${process.env.NEXT_PUBLIC_X402_FACILITATOR_URL}/verify`
+          : 'https://facilitator.mogami.io/verify';
         const facilitatorRequest = {
           paymentPayload: {
             x402Version: 1,
@@ -199,7 +201,7 @@ export async function GET(request: NextRequest) {
           },
         };
         
-        // Step 3a: Verify with PayAI facilitator
+        // Step 3a: Verify with Mogami facilitator
         const facilitatorResponse = await fetch(facilitatorUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -208,7 +210,7 @@ export async function GET(request: NextRequest) {
         
         const facilitatorData = await facilitatorResponse.json();
         
-        console.log('🔍 PayAI Facilitator Verify Response:', {
+        console.log('🔍 Mogami Facilitator Verify Response:', {
           status: facilitatorResponse.status,
           isValid: facilitatorData.isValid,
           txHash: facilitatorData.txHash,
@@ -220,8 +222,10 @@ export async function GET(request: NextRequest) {
         }
         
         // Step 3b: Settle the payment (execute on-chain)
-        // PayAI facilitator requires /settle to actually execute the transfer
-        const settleUrl = 'https://facilitator.payai.network/settle';
+        // Mogami facilitator requires /settle to actually execute the transfer
+        const settleUrl = process.env.NEXT_PUBLIC_X402_FACILITATOR_URL 
+          ? `${process.env.NEXT_PUBLIC_X402_FACILITATOR_URL}/settle`
+          : 'https://facilitator.mogami.io/settle';
         const settleRequest = {
           paymentPayload: facilitatorRequest.paymentPayload,
           paymentRequirements: facilitatorRequest.paymentRequirements,
@@ -235,7 +239,7 @@ export async function GET(request: NextRequest) {
         
         const settleData = await settleResponse.json();
         
-        console.log('🔍 PayAI Facilitator Settle Response:', {
+        console.log('🔍 Mogami Facilitator Settle Response:', {
           status: settleResponse.status,
           transaction: settleData.transaction,
           txHash: settleData.txHash,
@@ -243,7 +247,7 @@ export async function GET(request: NextRequest) {
           fullResponse: settleData,
         });
         
-        // PayAI facilitator returns transaction hash in 'transaction' field, not 'txHash'
+        // Mogami facilitator returns transaction hash in 'transaction' field, not 'txHash'
         const txHash = settleData.transaction || settleData.txHash;
         
         if (!settleResponse.ok || !txHash) {

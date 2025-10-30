@@ -1,5 +1,5 @@
 export const X402_CONFIG = {
-  facilitatorUrl: process.env.NEXT_PUBLIC_X402_FACILITATOR_URL || 'https://facilitator.payai.network',
+  facilitatorUrl: process.env.NEXT_PUBLIC_X402_FACILITATOR_URL || 'https://facilitator.mogami.io', // Mogami facilitator
   payTo: process.env.NEXT_PUBLIC_X402_PAY_TO || '0x8bee703d6214a266e245b0537085b1021e1ccaed', // EVM (Base)
   payToSol: process.env.NEXT_PUBLIC_X402_PAY_TO_SOL || 'GLrMcCztDV4Bu4TdN3NFiQmcVGHUh6LMGwkwbwLXm48N', // Solana
   network: process.env.NEXT_PUBLIC_X402_NETWORK || 'base',
@@ -21,9 +21,10 @@ export const TOKENS = {
 };
 
 // Your public merchant URL (this will be registered with facilitator)
+// Mogami facilitator - better x402scan integration
 export const X402_FACILITATOR_URL = 
   process.env.NEXT_PUBLIC_X402_FACILITATOR_URL || 
-  'https://facilitator.payai.network';
+  'https://facilitator.mogami.io';
 
 export const X402_MERCHANT_URL = 
   process.env.NEXT_PUBLIC_MERCHANT_URL || 
