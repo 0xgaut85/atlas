@@ -201,7 +201,8 @@ export function X402Indexer() {
             };
             const websiteUrl = getWebsiteUrl(service.endpoint);
             const getScreenshotUrl = (url: string) => {
-              return `https://api.apiflash.com/v1/urltoimage?access_key=182f19ef948340c29ef9b9eada082156&url=${encodeURIComponent(url)}&format=png&width=1280&height=720`;
+              const apiKey = process.env.NEXT_PUBLIC_APIFLASH_API_KEY || '182f19ef948340c29ef9b9eada082156';
+              return `https://api.apiflash.com/v1/urltoimage?access_key=${apiKey}&url=${encodeURIComponent(url)}&format=png&width=1280&height=720`;
             };
             const hasImageError = imageErrors[service.id] || false;
 
