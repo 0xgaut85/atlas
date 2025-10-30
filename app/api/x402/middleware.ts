@@ -79,6 +79,9 @@ export async function verifyX402Payment(
       
       // Use PayAI facilitator to verify EIP-3009 authorization
       try {
+        // Get the resource URL from the request
+        const resourceUrl = request.url || 'https://api.atlas402.com';
+        
         const facilitatorVerification = await payaiClient.verifyPayment({
           signature: payment.payload.signature,
           authorization: payment.payload.authorization,
@@ -86,6 +89,8 @@ export async function verifyX402Payment(
           expectedAmount: expectedAmountMicro,
           expectedRecipient: expectedRecipient,
           tokenAddress: network === 'base' ? TOKENS.usdcEvm : TOKENS.usdcSol,
+          resource: resourceUrl,
+          description: `Payment for ${price} USDC`,
         });
 
         if (facilitatorVerification.success && facilitatorVerification.data?.valid) {
