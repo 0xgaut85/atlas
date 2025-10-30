@@ -8,10 +8,11 @@ export interface PaymentVerification {
 }
 
 /**
- * Verifies x402 payment from request headers using Mogami facilitator
- * This follows the x402 standard by using the facilitator for verification
- * which also auto-registers the merchant for discovery on x402scan.com
- * CRITICAL: Payments MUST be verified by facilitator to appear on x402scan
+ * Verifies x402 payment from request headers
+ * Main site: Uses DIRECT ON-CHAIN transfers (no facilitator)
+ * Simulator: Uses Mogami facilitator for x402scan visibility
+ * 
+ * Discovery: Uses PayAI facilitator for service discovery
  */
 export async function verifyX402Payment(
   request: Request,
@@ -69,115 +70,20 @@ export async function verifyX402Payment(
     const priceNumber = Number(price.replace(/[^0-9.]/g, '')) || 1;
     const expectedAmountMicro = Math.round(priceNumber * 1_000_000).toString();
 
-      // Check if we have EIP-3009 authorization (Mogami facilitator format)
-    if (payment.payload?.signature && payment.payload?.authorization) {
-      console.log('✅ Payment received with EIP-3009 authorization');
-      console.log('Authorization details:', {
-        from: payment.payload.authorization.from,
-        to: payment.payload.authorization.to,
-        value: payment.payload.authorization.value,
-      });
-      
-      // Use Mogami facilitator to verify EIP-3009 authorization
-      // CRITICAL: Must succeed for transactions to appear on x402scan
-
-      
-      try {
-        // Get the resource URL from the request
-        const resourceUrl = request.url || 'https://api.atlas402.com';
-        
-        const facilitatorVerification = await payaiClient.verifyPayment({
-          signature: payment.payload.signature,
-          authorization: payment.payload.authorization,
-          network: network,
-          expectedAmount: expectedAmountMicro,
-          expectedRecipient: expectedRecipient,
-          tokenAddress: network === 'base' ? TOKENS.usdcEvm : TOKENS.usdcSol,
-          resource: resourceUrl,
-          description: `Payment for ${price} USDC`,
-        });
-
-        if (facilitatorVerification.success && facilitatorVerification.data?.valid) {
-          console.log('✅ Payment verified via Mogami facilitator');
-          console.log('✅ Transaction will appear on x402scan after sync (~5-15 minutes)');
-          
-          // Record payment in database for analytics
-          try {
-            const { recordPayment } = await import('@/lib/atlas-tracking');
-            await recordPayment({
-              txHash: payment.transactionHash,
-              userAddress: facilitatorVerification.data?.tx?.from || payment.from,
-              merchantAddress: expectedRecipient,
-              network: network,
-              amountMicro: parseInt(expectedAmountMicro),
-              currency: 'USDC',
-              category: 'access',
-              service: null,
-              metadata: {
-                facilitatorVerified: true,
-                      verifiedBy: 'mogami-facilitator',
-              },
-            });
-            console.log('✅ Payment recorded in database');
-          } catch (dbError: any) {
-            console.error('Failed to record payment in database:', dbError.message);
-            // Continue even if DB recording fails
-          }
-          
-          // Facilitator verified and executed transfer - USDC is now in your wallet!
-          return {
-            valid: true,
-            payment: {
-              transactionHash: facilitatorVerification.data?.txHash || payment.payload?.authorization?.nonce,
-              network: payment.network || network,
-              amount: payment.payload?.authorization?.value || expectedAmountMicro,
-              from: payment.payload?.authorization?.from,
-              to: expectedRecipient,
-              verified: true,
-              facilitatorVerified: true,
-              txHash: facilitatorVerification.data?.txHash, // Facilitator's execution tx hash
-            },
-          };
-        } else {
-          const errorDetails = facilitatorVerification.error || 'Unknown error';
-          const responseData = facilitatorVerification.data;
-          console.warn('⚠️ Facilitator verification failed:', {
-            error: errorDetails,
-            responseData: responseData,
-            authorizationSent: {
-              from: payment.payload.authorization.from,
-              to: payment.payload.authorization.to,
-              value: payment.payload.authorization.value,
-            },
-          });
-          
-                // Mogami facilitator verification failed - payment cannot be verified
-                // Transactions must be verified by facilitator to appear on x402scan
-                console.error('❌ Mogami facilitator verification failed - payment rejected');
-                console.error('❌ Transactions must be verified by facilitator to appear on x402scan');
-                return {
-                  valid: false,
-                  error: `Facilitator verification failed: ${errorDetails}. Payment must be verified by Mogami facilitator to appear on x402scan.`,
-                };
-              }
-            } catch (facilitatorError: any) {
-              console.error('❌ Mogami facilitator verification error:', facilitatorError);
-              console.error('❌ Error stack:', facilitatorError.stack);
-              // For EIP-3009, payment MUST be verified by facilitator to appear on x402scan
-              // If facilitator fails, payment cannot be accepted
-              return {
-                valid: false,
-                error: `Mogami facilitator error: ${facilitatorError.message || 'Unknown error'}. Payment must be verified by facilitator to appear on x402scan.`,
-              };
+      // Main site uses DIRECT ON-CHAIN transfers (not facilitator)
+      // Skip EIP-3009 authorization - it's only for simulator
+      if (payment.payload?.signature && payment.payload?.authorization) {
+        console.log('⚠️ Received EIP-3009 authorization - main site uses direct on-chain transfers');
+        console.log('⚠️ This authorization will be ignored - expecting transactionHash instead');
+        // Fall through to transactionHash check below
       }
-    }
     
     // Direct on-chain transfer format (main site payments - no facilitator)
     // OR facilitator-verified transaction hash (simulator payments)
     if (payment.transactionHash || payment.payload?.transactionHash) {
       const txHash = payment.transactionHash || payment.payload?.transactionHash;
       
-            // If facilitator already verified (simulator), accept immediately
+            // If facilitator already verified (simulator with Mogami), accept immediately
             if (payment.facilitatorVerified === true) {
               console.log('✅ Payment received with facilitator-verified transaction hash (simulator)');
               console.log('✅ Transaction already verified by Mogami facilitator - will appear on x402scan');
@@ -196,7 +102,7 @@ export async function verifyX402Payment(
             service: null,
             metadata: {
               facilitatorVerified: true,
-                      verifiedBy: 'mogami-facilitator',
+                      verifiedBy: payment.facilitatorVerified ? 'mogami-facilitator' : 'direct-onchain',
               simulator: true,
             },
           });
@@ -219,6 +125,7 @@ export async function verifyX402Payment(
       }
       
       // For direct on-chain transfers (main site), verify on-chain
+      // Main site payments are direct ERC-20 transfers, no facilitator needed
       console.log('✅ Payment received with transaction hash (direct on-chain transfer)');
       console.log('🔍 Verifying direct on-chain transfer...');
       return await verifyOnChainFallback(

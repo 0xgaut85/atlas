@@ -48,10 +48,8 @@ export interface FacilitatorResponse<T> {
 }
 
 class PayAIClient {
-  private facilitatorUrl = process.env.NEXT_PUBLIC_X402_FACILITATOR_URL || 'https://facilitator.mogami.tech'; // Mogami facilitator - better x402scan integration
-  private discoveryUrl = process.env.NEXT_PUBLIC_X402_FACILITATOR_URL 
-    ? `${process.env.NEXT_PUBLIC_X402_FACILITATOR_URL}/discovery/resources`
-    : 'https://facilitator.mogami.tech/discovery/resources'; // Mogami discovery endpoint
+  private facilitatorUrl = process.env.NEXT_PUBLIC_X402_FACILITATOR_URL || 'https://facilitator.payai.network'; // PayAI facilitator for verification (not used by main site)
+  private discoveryUrl = 'https://facilitator.payai.network/discovery/resources'; // PayAI discovery endpoint - used for service discovery
   private echoMerchantUrl = 'https://x402.payai.network'; // Keep PayAI echo merchant for testing
 
   /**
@@ -61,7 +59,7 @@ class PayAIClient {
    */
   async discoverServices(): Promise<FacilitatorResponse<X402Service[]>> {
     try {
-      console.log('🔍 Querying Mogami facilitator discovery endpoint for ALL x402 services...');
+      console.log('🔍 Querying PayAI facilitator discovery endpoint for ALL x402 services...');
       console.log(`📡 Endpoint: ${this.discoveryUrl}`);
       
       const response = await fetch(this.discoveryUrl, {
@@ -77,7 +75,7 @@ class PayAIClient {
       }
 
       const data = await response.json();
-      console.log('✅ Mogami Facilitator Discovery response received');
+      console.log('✅ PayAI Facilitator Discovery response received');
       console.log('📊 Response structure:', {
         hasItems: !!data.items,
         itemsCount: data.items?.length || 0,
