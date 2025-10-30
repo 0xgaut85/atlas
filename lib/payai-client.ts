@@ -172,20 +172,32 @@ class PayAIClient {
 
   /**
    * Verify a payment via PayAI facilitator
+   * PayAI facilitator expects a specific format for verification
    */
   async verifyPayment(paymentData: any): Promise<FacilitatorResponse<any>> {
     try {
+      // Format request according to PayAI facilitator API spec
+      // Try the simplified format first (for direct transaction verification)
+      const requestPayload = {
+        txHash: paymentData.txHash,
+        network: paymentData.network,
+        expectedAmount: String(paymentData.expectedAmount), // Ensure string
+        expectedRecipient: paymentData.expectedRecipient?.toLowerCase(), // Ensure lowercase
+        tokenAddress: paymentData.tokenAddress?.toLowerCase(), // Ensure lowercase
+      };
+
       console.log('🔍 PayAI Facilitator Request:', {
         url: `${this.facilitatorUrl}/verify`,
-        payload: paymentData,
+        payload: requestPayload,
       });
 
       const response = await fetch(`${this.facilitatorUrl}/verify`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
         },
-        body: JSON.stringify(paymentData),
+        body: JSON.stringify(requestPayload),
       });
 
       const data = await response.json();
