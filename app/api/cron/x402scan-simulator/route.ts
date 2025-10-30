@@ -179,7 +179,7 @@ export async function GET(request: NextRequest) {
         // Step 3: Verify with Mogami facilitator directly
         const facilitatorUrl = process.env.NEXT_PUBLIC_X402_FACILITATOR_URL 
           ? `${process.env.NEXT_PUBLIC_X402_FACILITATOR_URL}/verify`
-          : 'https://facilitator.mogami.io/verify';
+          : 'https://facilitator.mogami.tech/verify';
         const facilitatorRequest = {
           paymentPayload: {
             x402Version: 1,
@@ -225,7 +225,7 @@ export async function GET(request: NextRequest) {
         // Mogami facilitator requires /settle to actually execute the transfer
         const settleUrl = process.env.NEXT_PUBLIC_X402_FACILITATOR_URL 
           ? `${process.env.NEXT_PUBLIC_X402_FACILITATOR_URL}/settle`
-          : 'https://facilitator.mogami.io/settle';
+          : 'https://facilitator.mogami.tech/settle';
         const settleRequest = {
           paymentPayload: facilitatorRequest.paymentPayload,
           paymentRequirements: facilitatorRequest.paymentRequirements,

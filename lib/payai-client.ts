@@ -48,10 +48,10 @@ export interface FacilitatorResponse<T> {
 }
 
 class PayAIClient {
-  private facilitatorUrl = process.env.NEXT_PUBLIC_X402_FACILITATOR_URL || 'https://facilitator.mogami.io'; // Mogami facilitator - better x402scan integration
+  private facilitatorUrl = process.env.NEXT_PUBLIC_X402_FACILITATOR_URL || 'https://facilitator.mogami.tech'; // Mogami facilitator - better x402scan integration
   private discoveryUrl = process.env.NEXT_PUBLIC_X402_FACILITATOR_URL 
     ? `${process.env.NEXT_PUBLIC_X402_FACILITATOR_URL}/discovery/resources`
-    : 'https://facilitator.mogami.io/discovery/resources'; // Mogami discovery endpoint
+    : 'https://facilitator.mogami.tech/discovery/resources'; // Mogami discovery endpoint
   private echoMerchantUrl = 'https://x402.payai.network'; // Keep PayAI echo merchant for testing
 
   /**

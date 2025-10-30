@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Mogami facilitator discovery endpoint
-    const facilitatorUrl = X402_CONFIG.facilitatorUrl || 'https://facilitator.mogami.io';
+    const facilitatorUrl = X402_CONFIG.facilitatorUrl || 'https://facilitator.mogami.tech';
     const discoveryUrl = `${facilitatorUrl}/discovery/resources`;
 
     // Register resource with Mogami facilitator
