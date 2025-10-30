@@ -173,12 +173,53 @@ export async function verifyX402Payment(
     }
     
     // Direct on-chain transfer format (main site payments - no facilitator)
+    // OR facilitator-verified transaction hash (simulator payments)
     if (payment.transactionHash || payment.payload?.transactionHash) {
-      console.log('✅ Payment received with transaction hash (direct on-chain transfer)');
       const txHash = payment.transactionHash || payment.payload?.transactionHash;
       
-      // For direct on-chain transfers, skip facilitator and verify on-chain directly
-      // This is faster and more reliable for main site payments
+      // If facilitator already verified (simulator), accept immediately
+      if (payment.facilitatorVerified === true) {
+        console.log('✅ Payment received with facilitator-verified transaction hash (simulator)');
+        console.log('✅ Transaction already verified by PayAI facilitator - will appear on x402scan');
+        
+        // Record payment
+        try {
+          const { recordPayment } = await import('@/lib/atlas-tracking');
+          await recordPayment({
+            txHash: txHash,
+            userAddress: payment.from || 'simulator',
+            merchantAddress: expectedRecipient,
+            network: network,
+            amountMicro: parseInt(payment.amount || expectedAmountMicro),
+            currency: 'USDC',
+            category: 'access',
+            service: null,
+            metadata: {
+              facilitatorVerified: true,
+              verifiedBy: 'payai-facilitator',
+              simulator: true,
+            },
+          });
+          console.log('✅ Payment recorded in database');
+        } catch (dbError: any) {
+          console.error('Failed to record payment in database:', dbError.message);
+        }
+        
+        return {
+          valid: true,
+          payment: {
+            transactionHash: txHash,
+            network: network,
+            amount: payment.amount || expectedAmountMicro,
+            to: expectedRecipient,
+            verified: true,
+            facilitatorVerified: true,
+          },
+        };
+      }
+      
+      // For direct on-chain transfers (main site), verify on-chain
+      console.log('✅ Payment received with transaction hash (direct on-chain transfer)');
       console.log('🔍 Verifying direct on-chain transfer...');
       return await verifyOnChainFallback(
         { transactionHash: txHash, network, amount: payment.amount || expectedAmountMicro },

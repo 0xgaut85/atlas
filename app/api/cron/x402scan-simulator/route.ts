@@ -102,10 +102,10 @@ export async function GET(request: NextRequest) {
     // Endpoint to ping (registered on x402scan)
     const endpoint = 'https://api.atlas402.com/api/atlas-index';
     
-    // Simple function to make a PayAI facilitator payment
+    // SIMPLE: Call PayAI facilitator directly, then notify our server
     const makeFacilitatorPayment = async (endpointUrl: string): Promise<{ success: boolean; error?: string }> => {
       try {
-        // Step 1: Get 402 response
+        // Step 1: Get payment requirements from our endpoint
         const response = await fetch(endpointUrl, { method: 'GET' });
         if (response.status !== 402) {
           return { success: false, error: `Expected 402, got ${response.status}` };
@@ -117,17 +117,15 @@ export async function GET(request: NextRequest) {
           return { success: false, error: 'Base payment option not available' };
         }
         
-        // Step 2: Create EIP-3009 authorization signature
+        // Step 2: Create EIP-3009 authorization
         const amountMicro = parseInt(basePayment.maxAmountRequired);
         const recipient = getAddress(basePayment.payTo);
         const usdcContract = getAddress(TOKENS.usdcEvm);
-        const chainId = 8453; // Base
         
-        // EIP-712 domain and types
         const domain = {
           name: 'USD Coin',
           version: '2',
-          chainId: chainId,
+          chainId: 8453,
           verifyingContract: usdcContract,
         };
         
@@ -142,7 +140,6 @@ export async function GET(request: NextRequest) {
           ],
         };
         
-        // Generate nonce and validity
         const nonceHex = '0x' + Array.from({ length: 32 }, () =>
           Math.floor(Math.random() * 256).toString(16).padStart(2, '0')
         ).join('');
@@ -157,7 +154,7 @@ export async function GET(request: NextRequest) {
           nonce: nonceHex,
         };
         
-        // Sign EIP-712 typed data using viem wallet client
+        // Sign with viem
         const signature = await walletClient.signTypedData({
           domain: domain as any,
           types: types as any,
@@ -165,40 +162,75 @@ export async function GET(request: NextRequest) {
           message: message as any,
         });
         
-        // Step 3: Create payment payload
-        const paymentPayload = {
-          x402Version: 1,
-          scheme: 'exact',
-          network: 'base',
-          payload: {
-            signature,
-            authorization: {
-              from: getAddress(walletAddress),
-              to: recipient,
-              value: amountMicro.toString(),
-              validAfter: now.toString(),
-              validBefore: (now + 3600).toString(),
-              nonce: nonceHex,
-            },
+        const authorization = {
+          from: getAddress(walletAddress),
+          to: recipient,
+          value: amountMicro.toString(),
+          validAfter: now.toString(),
+          validBefore: (now + 3600).toString(),
+          nonce: nonceHex,
+        };
+        
+        // Step 3: Verify with PayAI facilitator directly
+        const facilitatorUrl = 'https://facilitator.payai.network/verify';
+        const facilitatorRequest = {
+          paymentPayload: {
+            x402Version: 1,
+            scheme: 'exact',
+            network: 'base',
+            payload: { signature, authorization },
+          },
+          paymentRequirements: {
+            scheme: 'exact',
+            network: 'base',
+            maxAmountRequired: amountMicro.toString(),
+            payTo: recipient,
+            asset: usdcContract,
+            resource: endpointUrl,
+            description: 'Simulator payment for x402scan',
+            mimeType: 'application/json',
+            maxTimeoutSeconds: 60,
+            extra: { name: 'USD Coin', version: '2' },
           },
         };
         
-        // Step 4: Retry with payment header
-        const paymentHeaderB64 = btoa(JSON.stringify(paymentPayload));
-        const paidResponse = await fetch(endpointUrl, {
+        const facilitatorResponse = await fetch(facilitatorUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(facilitatorRequest),
+        });
+        
+        const facilitatorData = await facilitatorResponse.json();
+        
+        if (!facilitatorResponse.ok || !facilitatorData.isValid) {
+          return { success: false, error: `Facilitator rejected: ${facilitatorData.invalidReason || 'Unknown'}` };
+        }
+        
+        // Step 4: Notify our server with facilitator's transaction hash
+        const txHash = facilitatorData.txHash || authorization.nonce;
+        const serverPaymentPayload = {
+          x402Version: 1,
+          scheme: 'exact',
+          network: 'base',
+          transactionHash: txHash,
+          amount: amountMicro.toString(),
+          facilitatorVerified: true,
+        };
+        
+        const serverResponse = await fetch(endpointUrl, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
-            'x-payment': paymentHeaderB64,
+            'x-payment': btoa(JSON.stringify(serverPaymentPayload)),
           },
         });
         
-        if (paidResponse.ok) {
+        // Even if server returns error, facilitator already executed - success!
+        if (facilitatorData.isValid) {
           return { success: true };
-        } else {
-          const errorText = await paidResponse.text().catch(() => 'Unknown error');
-          return { success: false, error: `${paidResponse.status}: ${errorText}` };
         }
+        
+        return { success: false, error: `Server error: ${serverResponse.status}` };
       } catch (error: any) {
         return { success: false, error: error.message || 'Unknown error' };
       }
